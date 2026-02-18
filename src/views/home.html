@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VacationMonitor — Sign in</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #eff6ff 0%, var(--bg) 45%, var(--bg) 100%);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 720px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      letter-spacing: -0.03em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin-bottom: 22px;
+      line-height: 1.5;
+    }
+
+    .value-list {
+      list-style: none;
+      margin-bottom: 26px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .value-list li {
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #1e293b;
+      font-size: 0.95rem;
+    }
+
+    .signin-btn {
+      width: 100%;
+      border: 0;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+      background: var(--primary);
+      text-decoration: none;
+      transition: background-color .2s ease;
+    }
+
+    .signin-btn:hover {
+      background: var(--primary-hover);
+    }
+
+    .help {
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .footer {
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>VacationMonitor</h1>
+    <p class="subtitle">Track booking prices automatically, run scheduled checks, and export your historical price data — all from one dashboard.</p>
+
+    <ul class="value-list">
+      <li>Parse Booking URLs into saved searches in seconds</li>
+      <li>Run scheduled monitoring jobs and get updated rates</li>
+      <li>Review trends and export price history as CSV</li>
+    </ul>
+
+    <a class="signin-btn" href="/auth/google" aria-label="Sign in with Google">
+      <span>Sign in with Google</span>
+    </a>
+
+    <p class="help">Secure sign-in is required to manage your searches and alerts.</p>
+    <p class="footer">API health endpoint: <a href="/health">/health</a></p>
+  </main>
+</body>
+</html>
