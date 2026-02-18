@@ -3,126 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VacationMonitor — Sign in</title>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f8fafc;
-      --card: #ffffff;
-      --text: #0f172a;
-      --muted: #475569;
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
-      --border: #e2e8f0;
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: Inter, Segoe UI, Arial, sans-serif;
-    }
-
-    body {
-      min-height: 100vh;
-      background: linear-gradient(180deg, #eff6ff 0%, var(--bg) 45%, var(--bg) 100%);
-      color: var(--text);
-      display: grid;
-      place-items: center;
-      padding: 24px;
-    }
-
-    .card {
-      width: 100%;
-      max-width: 720px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 32px;
-      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
-    }
-
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 8px;
-      letter-spacing: -0.03em;
-    }
-
-    .subtitle {
-      color: var(--muted);
-      margin-bottom: 22px;
-      line-height: 1.5;
-    }
-
-    .value-list {
-      list-style: none;
-      margin-bottom: 26px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .value-list li {
-      padding: 12px 14px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #f8fafc;
-      color: #1e293b;
-      font-size: 0.95rem;
-    }
-
-    .signin-btn {
-      width: 100%;
-      border: 0;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 14px 18px;
-      font-size: 1rem;
-      font-weight: 600;
-      color: white;
-      background: var(--primary);
-      text-decoration: none;
-      transition: background-color .2s ease;
-    }
-
-    .signin-btn:hover {
-      background: var(--primary-hover);
-    }
-
-    .help {
-      margin-top: 14px;
-      color: var(--muted);
-      font-size: 0.9rem;
-      text-align: center;
-    }
-
-    .footer {
-      margin-top: 20px;
-      font-size: 0.85rem;
-      color: #64748b;
-      text-align: center;
-    }
-  </style>
+  <title>VacationMonitor — Track hotel prices automatically</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
 </head>
 <body>
-  <main class="card">
-    <h1>VacationMonitor</h1>
-    <p class="subtitle">Track booking prices automatically, run scheduled checks, and export your historical price data — all from one dashboard.</p>
+  <div class="landing">
+    <main class="landing__hero">
+      <div class="landing__logo" aria-hidden="true">✈️</div>
 
-    <ul class="value-list">
-      <li>Parse Booking URLs into saved searches in seconds</li>
-      <li>Run scheduled monitoring jobs and get updated rates</li>
-      <li>Review trends and export price history as CSV</li>
-    </ul>
+      <h1 class="landing__title">
+        Never overpay for<br><span>your vacation</span>
+      </h1>
+      <p class="landing__sub">
+        VacationMonitor watches Booking.com prices 24/7, alerts you when rates drop,
+        and gives you AI-powered insights to book at the perfect moment.
+      </p>
 
-    <a class="signin-btn" href="/auth/google" aria-label="Sign in with Google">
-      <span>Sign in with Google</span>
-    </a>
+      <div class="landing__features" role="list">
+        <div class="feature-card" role="listitem">
+          <div class="feature-card__icon">🔍</div>
+          <div class="feature-card__title">Paste &amp; Save</div>
+          <div class="feature-card__text">Drop any Booking.com URL and we parse all search criteria automatically.</div>
+        </div>
+        <div class="feature-card" role="listitem">
+          <div class="feature-card__icon">📉</div>
+          <div class="feature-card__title">Price Trends</div>
+          <div class="feature-card__text">Track price history over time and visualise which hotels drop and when.</div>
+        </div>
+        <div class="feature-card" role="listitem">
+          <div class="feature-card__icon">🤖</div>
+          <div class="feature-card__title">AI Insights</div>
+          <div class="feature-card__text">Get smart recommendations and booking-window analysis powered by AI.</div>
+        </div>
+      </div>
 
-    <p class="help">Secure sign-in is required to manage your searches and alerts.</p>
-    <p class="footer">API health endpoint: <a href="/health">/health</a></p>
-  </main>
+      <a class="google-btn" href="/auth/google" aria-label="Sign in with Google">
+        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
+          <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+          <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+          <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+          <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        </svg>
+        Continue with Google
+      </a>
+
+      <p style="font-size:.8rem;color:rgba(255,255,255,.4);margin-top:16px;">
+        Secure OAuth — we never store your Google password.
+      </p>
+    </main>
+
+    <footer class="landing__footer">
+      VacationMonitor &nbsp;·&nbsp;
+      <a href="/health">API status</a>
+    </footer>
+  </div>
 </body>
 </html>
+

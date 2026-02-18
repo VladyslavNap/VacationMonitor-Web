@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import secureSession from '@fastify/secure-session';
 import oauth2 from '@fastify/oauth2';
+import fastifyStatic from '@fastify/static';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -26,7 +27,11 @@ const logger = require('./logger.cjs');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const homePageTemplate = readFileSync(join(__dirname, 'views', 'home.html'), 'utf8');
+const homePageTemplate    = readFileSync(join(__dirname, 'views', 'home.html'), 'utf8');
+const dashboardTemplate   = readFileSync(join(__dirname, 'views', 'dashboard.html'), 'utf8');
+const searchTemplate      = readFileSync(join(__dirname, 'views', 'search.html'), 'utf8');
+const newSearchTemplate   = readFileSync(join(__dirname, 'views', 'new-search.html'), 'utf8');
+const settingsTemplate    = readFileSync(join(__dirname, 'views', 'settings.html'), 'utf8');
 
 /**
  * Build and configure Fastify application
@@ -40,6 +45,13 @@ export async function buildApp(opts = {}) {
   });
 
   try {
+    // ==================== STATIC ASSETS ====================
+    await app.register(fastifyStatic, {
+      root: join(__dirname, '..', 'public'),
+      prefix: '/assets/',
+      decorateReply: false
+    });
+
     // ==================== CORS ====================
     await app.register(cors, {
       origin: process.env.FRONTEND_URL || true,
@@ -88,6 +100,13 @@ export async function buildApp(opts = {}) {
         auth: oauth2.GOOGLE_CONFIGURATION
       },
       startRedirectPath: '/oauth2/google',
+      redirectStateCookieName: 'oauth2-redirect-state',
+      cookie: {
+        path: '/',
+        httpOnly: true,
+        sameSite: 'lax',
+        secure: process.env.NODE_ENV === 'production'
+      },
       callbackUri: process.env.GOOGLE_OAUTH_CALLBACK_URL || 'http://localhost:3000/auth/google/callback'
     });
 
@@ -121,17 +140,31 @@ export async function buildApp(opts = {}) {
     // ==================== HEALTH CHECK ====================
     app.get('/', async (request, reply) => {
       const accepts = request.headers.accept || '';
-
       if (accepts.includes('application/json')) {
-        return {
-          service: 'VacationMonitor Web API',
-          status: 'ok',
-          auth: '/auth/google',
-          health: '/health'
-        };
+        return { service: 'VacationMonitor Web API', status: 'ok', auth: '/auth/google', health: '/health' };
       }
-
+      // Redirect authenticated users straight to their dashboard
+      const sessionUser = request.session.get('user');
+      if (sessionUser) {
+        return reply.redirect(302, '/dashboard');
+      }
       return reply.type('text/html; charset=utf-8').send(homePageTemplate);
+    });
+
+    app.get('/dashboard', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(dashboardTemplate);
+    });
+
+    app.get('/search', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(searchTemplate);
+    });
+
+    app.get('/new-search', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(newSearchTemplate);
+    });
+
+    app.get('/settings', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(settingsTemplate);
     });
 
     app.get('/health', async (request, reply) => {

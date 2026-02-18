@@ -1,25 +1,37 @@
 # VacationMonitor Web
 
-Fastify REST API for managing hotels price monitoring searches. Provides Google OAuth authentication, search CRUD, price history browsing, CSV export, and a built-in scheduler that enqueues scraping jobs to Azure Service Bus.
+Fastify web server providing a full-stack hotel price monitoring application. Includes Google OAuth authentication, a multi-page modern UI, search CRUD, price history with charts, AI insights, CSV export, and a built-in scheduler that enqueues scraping jobs to Azure Service Bus.
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────┐
-│  VacationMonitor-Web                          │
-│                                               │
-│  Fastify API (/api/...)                       │
-│  ├── Google OAuth (/auth/google)              │
-│  ├── User management (/api/users)             │
-│  ├── Search CRUD (/api/searches)              │
-│  ├── Price history (/api/searches/:id/prices) │
-│  └── CSV export (/api/searches/:id/export)    │
-│                                               │
-│  Scheduler (polls DB every 5 min)             │
-│  └── Enqueues jobs → Azure Service Bus ───────┼──► VacationMonitor-Worker
-│                                               │
-│  Cosmos DB (users, searches, prices, ...)     │
-└───────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  VacationMonitor-Web                                         │
+│                                                              │
+│  Web UI (Alpine.js + Chart.js, served by Fastify)            │
+│  ├── Landing page          GET /                             │
+│  ├── Dashboard             GET /dashboard                    │
+│  ├── Search detail         GET /search?id=                   │
+│  ├── Create / Edit search  GET /new-search                   │
+│  └── Settings              GET /settings                     │
+│                                                              │
+│  Static assets             GET /assets/...                   │
+│  ├── public/css/styles.css  — Design system                  │
+│  ├── public/js/api.js       — Fetch wrapper                  │
+│  └── public/js/auth.js      — Client-side auth guard         │
+│                                                              │
+│  Fastify API (/api/...)                                      │
+│  ├── Google OAuth (/auth/google)                             │
+│  ├── User management (/api/users)                            │
+│  ├── Search CRUD (/api/searches)                             │
+│  ├── Price history (/api/searches/:id/prices)                │
+│  └── CSV export (/api/searches/:id/export)                   │
+│                                                              │
+│  Scheduler (polls DB every 5 min)                            │
+│  └── Enqueues jobs → Azure Service Bus ──────────────────────┼──► VacationMonitor-Worker
+│                                                              │
+│  Cosmos DB (users, searches, prices, conversations, ...)     │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 ## Prerequisites
@@ -58,6 +70,18 @@ npm start
 | `npm run dev` | Start with `--watch` for auto-reload |
 | `npm run init-db` | Create Cosmos DB database and containers |
 | `npm run migrate` | Migrate legacy CSV/JSON data to Cosmos DB |
+
+## UI Pages
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Landing | `GET /` | Sign-in hero (redirects to `/dashboard` if already authenticated) |
+| Dashboard | `GET /dashboard` | All searches overview — run, pause, edit, delete |
+| Search detail | `GET /search?id=` | Price trend chart, latest prices table, AI insights |
+| Create / Edit | `GET /new-search[?id=]` | URL-paste or manual criteria form; `?id=` enables edit mode |
+| Settings | `GET /settings` | Profile, email notifications toggle, account deletion |
+
+The UI is powered by **Alpine.js** and **Chart.js** (both loaded from CDN). Static assets are served from `public/` at the `/assets/` prefix.
 
 ## API Endpoints
 

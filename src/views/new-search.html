@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Search — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body x-data="searchForm()" x-cloak>
+
+  <!-- ── Navigation ───────────────────────────────────────── -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="/dashboard" class="nav__brand">
+        <div class="nav__brand-icon" aria-hidden="true">✈</div>
+        VacationMonitor
+      </a>
+      <div class="nav__actions">
+        <template x-if="user">
+          <div class="flex items-center gap-2">
+            <a href="/settings" class="nav__user-btn" aria-label="Account settings">
+              <div class="nav__avatar">
+                <template x-if="user.photoURL">
+                  <img :src="user.photoURL" :alt="user.displayName" />
+                </template>
+                <template x-if="!user.photoURL">
+                  <span x-text="(user.displayName || user.email || '?')[0].toUpperCase()"></span>
+                </template>
+              </div>
+              <span class="nav__name" x-text="user.displayName || user.email"></span>
+            </a>
+            <button @click="logout()" class="btn btn--secondary btn--icon" title="Sign out" aria-label="Sign out">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="page">
+    <div class="container" style="max-width:740px">
+
+      <!-- Back -->
+      <a :href="editId ? `/search?id=${editId}` : '/dashboard'" class="back-link">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        <span x-text="editId ? 'Back to search' : 'All searches'"></span>
+      </a>
+
+      <div class="page-header">
+        <h1 class="page-title" x-text="editId ? 'Edit Search' : 'New Search'"></h1>
+        <p class="page-subtitle" x-text="editId ? 'Update your price monitor settings.' : 'Set up a new Booking.com price monitor.'"></p>
+      </div>
+
+      <!-- Full-page skeleton while loading in edit mode -->
+      <div x-show="loading && editId" class="form-stack">
+        <div class="skeleton-card" style="height:200px"></div>
+        <div class="skeleton-card" style="height:160px"></div>
+        <div class="skeleton-card" style="height:120px"></div>
+      </div>
+
+      <!-- Form -->
+      <form x-show="!(loading && editId)" @submit.prevent="submit()" class="form-stack" novalidate>
+
+        <!-- Search name -->
+        <div class="form-group">
+          <label for="searchName" class="label">
+            Search name <span aria-hidden="true">*</span>
+          </label>
+          <input id="searchName" type="text" class="input" :class="errors.searchName && 'input--error'"
+                 x-model="searchName" placeholder="e.g. Paris Summer Trip" maxlength="120"
+                 autocomplete="off" />
+          <p x-show="errors.searchName" class="field-error" x-text="errors.searchName" role="alert"></p>
+        </div>
+
+        <!-- Mode tabs -->
+        <div>
+          <p class="label mb-2">How do you want to set up the search?</p>
+          <div class="tabs" role="tablist" aria-label="Search input mode">
+            <button type="button" role="tab" :aria-selected="mode === 'url'" :class="mode === 'url' ? 'tab tab--active' : 'tab'" @click="mode = 'url'">
+              Paste URL
+            </button>
+            <button type="button" role="tab" :aria-selected="mode === 'manual'" :class="mode === 'manual' ? 'tab tab--active' : 'tab'" @click="mode = 'manual'">
+              Enter manually
+            </button>
+          </div>
+        </div>
+
+        <!-- URL mode -->
+        <div x-show="mode === 'url'" class="form-section" role="tabpanel">
+          <p class="form-section__title">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+            Booking.com URL
+          </p>
+          <div class="form-group">
+            <label for="searchUrl" class="label">Paste a Booking.com search results URL</label>
+            <textarea id="searchUrl" class="input" :class="errors.searchUrl && 'input--error'"
+                      x-model="searchUrl" rows="3"
+                      placeholder="https://www.booking.com/searchresults.html?dest_id=..."></textarea>
+            <p class="label-hint" style="margin:0;font-size:0.78rem;color:var(--c-text-muted)">
+              We'll automatically parse the destination, dates, occupancy, and more from the URL.
+            </p>
+            <p x-show="errors.searchUrl" class="field-error" x-text="errors.searchUrl" role="alert"></p>
+          </div>
+        </div>
+
+        <!-- Manual mode -->
+        <div x-show="mode === 'manual'" class="form-section" role="tabpanel">
+          <p class="form-section__title">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Search Criteria
+          </p>
+          <div class="form-stack">
+            <div class="form-group">
+              <label for="destination" class="label">Destination <span aria-hidden="true">*</span></label>
+              <input id="destination" type="text" class="input" :class="errors.destination && 'input--error'"
+                     x-model="destination" placeholder="e.g. Paris, Barcelona, Amalfi Coast" autocomplete="off" />
+              <p x-show="errors.destination" class="field-error" x-text="errors.destination" role="alert"></p>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label for="checkIn" class="label">Check-in <span aria-hidden="true">*</span></label>
+                <input id="checkIn" type="date" class="input" :class="errors.checkIn && 'input--error'"
+                       x-model="checkIn" :min="today" />
+                <p x-show="errors.checkIn" class="field-error" x-text="errors.checkIn" role="alert"></p>
+              </div>
+              <div class="form-group">
+                <label for="checkOut" class="label">Check-out <span aria-hidden="true">*</span></label>
+                <input id="checkOut" type="date" class="input" :class="errors.checkOut && 'input--error'"
+                       x-model="checkOut" :min="checkIn || today" />
+                <p x-show="errors.checkOut" class="field-error" x-text="errors.checkOut" role="alert"></p>
+              </div>
+            </div>
+
+            <div class="form-row form-row--3">
+              <div class="form-group">
+                <label for="adults" class="label">Adults</label>
+                <input id="adults" type="number" class="input" x-model.number="adults" min="1" max="30" />
+              </div>
+              <div class="form-group">
+                <label for="children" class="label">Children</label>
+                <input id="children" type="number" class="input" x-model.number="children" min="0" max="10" />
+              </div>
+              <div class="form-group">
+                <label for="currency" class="label">Currency</label>
+                <select id="currency" class="input" x-model="currency">
+                  <option value="EUR">EUR — Euro</option>
+                  <option value="USD">USD — US Dollar</option>
+                  <option value="GBP">GBP — British Pound</option>
+                  <option value="CHF">CHF — Swiss Franc</option>
+                  <option value="PLN">PLN — Polish Złoty</option>
+                  <option value="CZK">CZK — Czech Koruna</option>
+                  <option value="SEK">SEK — Swedish Krona</option>
+                  <option value="NOK">NOK — Norwegian Krone</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label for="minPrice" class="label">Min price <span class="label-hint">(optional)</span></label>
+                <input id="minPrice" type="number" class="input" x-model.number="minPrice" min="0" placeholder="0" />
+              </div>
+              <div class="form-group">
+                <label for="maxPrice" class="label">Max price <span class="label-hint">(optional)</span></label>
+                <input id="maxPrice" type="number" class="input" x-model.number="maxPrice" min="0" placeholder="No limit" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schedule -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            Schedule
+          </p>
+          <div class="form-stack">
+            <label class="toggle-wrap">
+              <div :class="scheduleEnabled ? 'toggle toggle--on' : 'toggle'" @click="scheduleEnabled = !scheduleEnabled" role="switch" :aria-checked="scheduleEnabled" tabindex="0"></div>
+              <div>
+                <div class="toggle-label">Enable automatic monitoring</div>
+                <div class="toggle-desc">Run the search automatically on a recurring schedule</div>
+              </div>
+            </label>
+
+            <div x-show="scheduleEnabled" class="form-group">
+              <label for="interval" class="label">Check every</label>
+              <select id="interval" class="input" x-model.number="intervalHours" style="max-width:220px">
+                <option value="3">3 hours</option>
+                <option value="6">6 hours</option>
+                <option value="12">12 hours</option>
+                <option value="24">24 hours (daily)</option>
+                <option value="48">48 hours (every 2 days)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email recipients -->
+        <div class="form-section">
+          <p class="form-section__title">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Email notifications
+            <span class="label-hint">(optional)</span>
+          </p>
+          <div class="form-group">
+            <label class="label">Send alerts to</label>
+            <div class="tag-input-wrap" @click="$refs.emailInput.focus()">
+              <template x-for="email in emailRecipients" :key="email">
+                <span class="tag">
+                  <span x-text="email"></span>
+                  <span class="tag__remove" @click.stop="removeEmail(email)" role="button" :aria-label="`Remove ${email}`">✕</span>
+                </span>
+              </template>
+              <input x-ref="emailInput" type="email" class="tag-text-input"
+                     x-model="emailInput"
+                     @keydown="addEmail($event)"
+                     @blur="addEmailFromBlur()"
+                     placeholder="Add email address…"
+                     aria-label="Email address input" />
+            </div>
+            <p class="label-hint" style="margin:0;font-size:.78rem;color:var(--c-text-muted)">
+              Press Enter or comma to add. We'll notify you when prices drop significantly.
+            </p>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-between items-center gap-3 flex-wrap" style="padding-top:4px">
+          <a :href="editId ? `/search?id=${editId}` : '/dashboard'" class="btn btn--secondary">Cancel</a>
+          <button type="submit" class="btn btn--primary btn--lg" :disabled="loading">
+            <template x-if="loading"><span class="spinner" aria-hidden="true"></span></template>
+            <span x-text="loading ? (editId ? 'Saving…' : 'Creating…') : (editId ? 'Save changes' : 'Create search')"></span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </main>
+
+  <!-- ── Toast ─────────────────────────────────────────────── -->
+  <div class="toast-region" role="status" aria-live="polite">
+    <div x-show="toast" x-transition :class="`toast toast--${toast?.type}`">
+      <span class="toast__icon" x-text="toast?.type === 'success' ? '✓' : '✕'" aria-hidden="true"></span>
+      <span x-text="toast?.message"></span>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
+    function searchForm() {
+      return {
+        user: null,
+        mode: 'url',
+        editId: null,
+        loading: false,
+        toast: null,
+        errors: {},
+        today: new Date().toISOString().substring(0, 10),
+
+        // Fields
+        searchName: '',
+        searchUrl: '',
+        emailRecipients: [],
+        emailInput: '',
+        scheduleEnabled: true,
+        intervalHours: 6,
+
+        // Manual criteria
+        destination: '',
+        checkIn: '',
+        checkOut: '',
+        adults: 2,
+        children: 0,
+        currency: 'EUR',
+        minPrice: '',
+        maxPrice: '',
+
+        async init() {
+          this.user = await window.requireAuth();
+          if (!this.user) return;
+          if (this.user.email) this.emailRecipients = [this.user.email];
+          this.editId = new URLSearchParams(window.location.search).get('id');
+          if (this.editId) {
+            document.title = 'Edit Search — VacationMonitor';
+            await this.loadSearch();
+          }
+        },
+
+        async loadSearch() {
+          this.loading = true;
+          try {
+            const s = await window.api.get(`/api/searches/${this.editId}`);
+            this.searchName = s.searchName || '';
+            this.searchUrl = s.searchUrl || '';
+            this.emailRecipients = s.emailRecipients || [];
+            this.scheduleEnabled = s.schedule?.enabled ?? true;
+            this.intervalHours = s.schedule?.intervalHours || 6;
+            if (s.criteria) {
+              const c = s.criteria;
+              this.destination = c.cityName || c.destination || '';
+              this.checkIn = c.checkIn || '';
+              this.checkOut = c.checkOut || '';
+              this.adults = c.adults || 2;
+              this.children = c.children || 0;
+              this.currency = c.currency || 'EUR';
+              this.minPrice = c.minPrice || '';
+              this.maxPrice = c.maxPrice || '';
+            }
+            // Choose mode
+            this.mode = this.searchUrl ? 'url' : 'manual';
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        addEmail(e) {
+          if (['Enter', ',', 'Tab'].includes(e.key)) {
+            e.preventDefault();
+            this._commitEmail();
+          }
+        },
+
+        addEmailFromBlur() {
+          if (this.emailInput.trim()) this._commitEmail();
+        },
+
+        _commitEmail() {
+          const val = this.emailInput.trim().replace(/,+$/, '');
+          if (val && val.includes('@') && !this.emailRecipients.includes(val)) {
+            this.emailRecipients = [...this.emailRecipients, val];
+          }
+          this.emailInput = '';
+        },
+
+        removeEmail(email) {
+          this.emailRecipients = this.emailRecipients.filter(e => e !== email);
+        },
+
+        validate() {
+          this.errors = {};
+          if (!this.searchName.trim()) this.errors.searchName = 'Search name is required';
+          if (this.mode === 'url') {
+            if (!this.searchUrl.trim()) {
+              this.errors.searchUrl = 'A Booking.com URL is required';
+            } else if (!this.searchUrl.includes('booking.com')) {
+              this.errors.searchUrl = 'URL must be from booking.com';
+            }
+          } else {
+            if (!this.destination.trim()) this.errors.destination = 'Destination is required';
+            if (!this.checkIn) this.errors.checkIn = 'Check-in date is required';
+            if (!this.checkOut) this.errors.checkOut = 'Check-out date is required';
+            if (this.checkIn && this.checkOut && this.checkIn >= this.checkOut) {
+              this.errors.checkOut = 'Check-out must be after check-in';
+            }
+          }
+          return Object.keys(this.errors).length === 0;
+        },
+
+        async submit() {
+          if (!this.validate()) return;
+          this.loading = true;
+
+          const payload = {
+            searchName: this.searchName.trim(),
+            emailRecipients: this.emailRecipients,
+            schedule: { enabled: this.scheduleEnabled, intervalHours: Number(this.intervalHours) }
+          };
+
+          if (this.mode === 'url') {
+            payload.searchUrl = this.searchUrl.trim();
+          } else {
+            payload.criteria = {
+              cityName: this.destination.trim(),
+              checkIn: this.checkIn,
+              checkOut: this.checkOut,
+              adults: Number(this.adults),
+              children: Number(this.children),
+              currency: this.currency,
+              ...(this.minPrice ? { minPrice: Number(this.minPrice) } : {}),
+              ...(this.maxPrice ? { maxPrice: Number(this.maxPrice) } : {}),
+            };
+          }
+
+          try {
+            if (this.editId) {
+              await window.api.patch(`/api/searches/${this.editId}`, payload);
+              this.showToast('Search updated!', 'success');
+              setTimeout(() => { window.location.href = `/search?id=${this.editId}`; }, 1100);
+            } else {
+              const result = await window.api.post('/api/searches', payload);
+              this.showToast('Search created!', 'success');
+              setTimeout(() => { window.location.href = `/search?id=${result.id}`; }, 1100);
+            }
+          } catch (e) {
+            this.showToast(e.message, 'error');
+            this.loading = false;
+          }
+        },
+
+        async logout() {
+          try { await window.api.post('/auth/logout'); } catch {}
+          window.location.href = '/';
+        },
+
+        showToast(message, type = 'info') {
+          this.toast = { message, type };
+          setTimeout(() => { this.toast = null; }, 4000);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

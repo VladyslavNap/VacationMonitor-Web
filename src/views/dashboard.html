@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body x-data="dashboard()" x-cloak>
+
+  <!-- ── Navigation ───────────────────────────────────────── -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="/dashboard" class="nav__brand">
+        <div class="nav__brand-icon" aria-hidden="true">✈</div>
+        VacationMonitor
+      </a>
+      <div class="nav__actions">
+        <template x-if="user">
+          <div class="flex items-center gap-2">
+            <a href="/new-search" class="btn btn--primary btn--sm" style="display:none" id="new-search-nav-btn">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Search
+            </a>
+            <a href="/settings" class="nav__user-btn" aria-label="Account settings">
+              <div class="nav__avatar">
+                <template x-if="user.photoURL">
+                  <img :src="user.photoURL" :alt="user.displayName" />
+                </template>
+                <template x-if="!user.photoURL">
+                  <span x-text="(user.displayName || user.email || '?')[0].toUpperCase()"></span>
+                </template>
+              </div>
+              <span class="nav__name" x-text="user.displayName || user.email"></span>
+            </a>
+            <button @click="logout()" class="btn btn--secondary btn--icon" title="Sign out" aria-label="Sign out">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="page">
+    <div class="container">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header__row">
+          <div>
+            <h1 class="page-title">My Searches</h1>
+            <p class="page-subtitle" x-show="!loading" x-text="searches.length + ' active monitor' + (searches.length !== 1 ? 's' : '')"></p>
+          </div>
+          <a href="/new-search" class="btn btn--primary" style="display:none" id="new-search-header-btn">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+            New Search
+          </a>
+        </div>
+      </div>
+
+      <!-- Skeleton loading state -->
+      <div x-show="loading" class="search-grid" aria-busy="true" aria-label="Loading searches">
+        <template x-for="i in 6" :key="i">
+          <div class="skeleton-card">
+            <div class="flex justify-between items-start mb-4">
+              <div class="sk sk-text sk-text--xl" style="width:60%"></div>
+              <div class="sk sk-text" style="width:18%;height:22px;border-radius:999px"></div>
+            </div>
+            <div class="flex-col gap-2 mb-4">
+              <div class="sk sk-text" style="width:75%"></div>
+              <div class="sk sk-text" style="width:55%"></div>
+              <div class="sk sk-text" style="width:65%"></div>
+            </div>
+            <div class="sk sk-text sk-text--lg" style="width:35%"></div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Empty state -->
+      <div x-show="!loading && searches.length === 0" class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">🔍</div>
+        <h2 class="empty-state__title">No searches yet</h2>
+        <p class="empty-state__text">Create your first price monitor by pasting a Booking.com URL or filling in your travel details.</p>
+        <a href="/new-search" class="btn btn--primary btn--lg">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Create first search
+        </a>
+      </div>
+
+      <!-- Search cards grid -->
+      <div x-show="!loading && searches.length > 0" class="search-grid" role="list">
+        <template x-for="search in searches" :key="search.id">
+          <article class="card card--hover" role="listitem">
+            <div class="card__body">
+              <!-- Header row -->
+              <div class="search-card__header">
+                <a :href="`/search?id=${search.id}`" class="search-card__title truncate min-w-0"
+                   :aria-label="`View ${search.searchName}`"
+                   x-text="search.searchName || 'Unnamed search'"></a>
+                <span :class="{
+                  'badge badge--dot badge--active':  search.isActive,
+                  'badge badge--dot badge--paused':  !search.isActive
+                }" x-text="search.isActive ? 'Active' : 'Paused'"></span>
+              </div>
+
+              <!-- Meta rows -->
+              <div class="search-card__meta">
+                <div class="meta-row" x-show="search.criteria?.cityName || search.criteria?.destination">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  <span x-text="search.criteria?.cityName || search.criteria?.destination"></span>
+                </div>
+                <div class="meta-row" x-show="search.criteria?.checkIn && search.criteria?.checkOut">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  <span x-text="`${formatDate(search.criteria?.checkIn)} → ${formatDate(search.criteria?.checkOut)}`"></span>
+                </div>
+                <div class="meta-row" x-show="search.criteria?.adults">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                  <span x-text="`${search.criteria?.adults || 0} adult${search.criteria?.adults !== 1 ? 's' : ''}${search.criteria?.children ? `, ${search.criteria.children} child${search.criteria.children !== 1 ? 'ren' : ''}` : ''}`"></span>
+                </div>
+                <div class="meta-row">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                  <span>Last run: <span x-text="formatRelative(search.lastRunAt)"></span></span>
+                </div>
+              </div>
+
+              <!-- Price row -->
+              <div class="search-card__price-row">
+                <template x-if="getLowestPrice(search)">
+                  <div class="flex items-baseline gap-2">
+                    <span class="price-value" x-text="formatPrice(getLowestPrice(search))"></span>
+                    <span class="price-label">from / night</span>
+                  </div>
+                </template>
+                <template x-if="!getLowestPrice(search)">
+                  <span class="text-muted text-sm">No price data yet</span>
+                </template>
+              </div>
+            </div>
+
+            <!-- Card footer actions -->
+            <div class="card__footer">
+              <a :href="`/search?id=${search.id}`" class="btn btn--ghost btn--sm">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-.274.857-.678 1.655-1.19 2.374"/></svg>
+                View
+              </a>
+              <button @click="runSearch(search.id)"
+                      :disabled="runningIds.has(search.id)"
+                      class="btn btn--secondary btn--sm"
+                      :aria-label="`Run ${search.searchName}`">
+                <template x-if="!runningIds.has(search.id)">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+                </template>
+                <template x-if="runningIds.has(search.id)">
+                  <span class="spinner" aria-hidden="true"></span>
+                </template>
+                <span x-text="runningIds.has(search.id) ? 'Queuing…' : 'Run now'"></span>
+              </button>
+              <button @click="toggleActive(search)"
+                      class="btn btn--secondary btn--sm"
+                      :aria-label="search.isActive ? 'Pause search' : 'Resume search'">
+                <template x-if="search.isActive">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                </template>
+                <template x-if="!search.isActive">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+                </template>
+                <span x-text="search.isActive ? 'Pause' : 'Resume'"></span>
+              </button>
+              <a :href="`/new-search?id=${search.id}`" class="btn btn--secondary btn--icon-sm btn--icon" :aria-label="`Edit ${search.searchName}`" title="Edit">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </a>
+              <button @click="confirmDelete(search.id)" class="btn btn--danger btn--icon-sm btn--icon" :aria-label="`Delete ${search.searchName}`" title="Delete">
+                <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              </button>
+            </div>
+          </article>
+        </template>
+      </div>
+
+      <!-- Load more -->
+      <div x-show="hasMore && !loading" class="flex justify-end mt-6">
+        <button @click="loadMore()" :disabled="loadingMore" class="btn btn--secondary">
+          <template x-if="loadingMore"><span class="spinner" aria-hidden="true"></span></template>
+          <span x-text="loadingMore ? 'Loading…' : 'Load more'"></span>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── FAB (mobile) ─────────────────────────────────────── -->
+  <a href="/new-search" class="fab" aria-label="New search">
+    <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+  </a>
+
+  <!-- ── Delete confirm modal ─────────────────────────────── -->
+  <div x-show="deleteConfirmId" class="overlay" role="dialog" aria-modal="true" aria-labelledby="del-title" @keydown.escape.window="deleteConfirmId = null">
+    <div class="dialog">
+      <h2 class="dialog__title" id="del-title">Delete this search?</h2>
+      <p class="dialog__body">The search will be deactivated and all its price history will remain in the database. You can't undo this action.</p>
+      <div class="dialog__actions">
+        <button @click="deleteConfirmId = null" class="btn btn--secondary">Cancel</button>
+        <button @click="deleteSearch()" class="btn btn--danger-solid">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ─────────────────────────────────────────────── -->
+  <div class="toast-region" role="status" aria-live="polite">
+    <div x-show="toast" x-transition :class="`toast toast--${toast?.type}`">
+      <span class="toast__icon" x-text="toast?.type === 'success' ? '✓' : toast?.type === 'error' ? '✕' : 'ℹ'" aria-hidden="true"></span>
+      <span x-text="toast?.message"></span>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
+    function dashboard() {
+      return {
+        user: null,
+        searches: [],
+        loading: true,
+        loadingMore: false,
+        continuationToken: null,
+        hasMore: false,
+        toast: null,
+        toastTimer: null,
+        deleteConfirmId: null,
+        runningIds: new Set(),
+
+        async init() {
+          this.user = await window.requireAuth();
+          if (!this.user) return;
+          // Show nav buttons now that we're authenticated
+          document.getElementById('new-search-nav-btn').style.display = '';
+          document.getElementById('new-search-header-btn').style.display = '';
+          await this.loadSearches();
+        },
+
+        async loadSearches() {
+          this.loading = true;
+          try {
+            const data = await window.api.get('/api/searches?limit=20');
+            this.searches = data.searches || [];
+            this.continuationToken = data.continuationToken;
+            this.hasMore = data.hasMore;
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.loading = false;
+          }
+        },
+
+        async loadMore() {
+          if (!this.hasMore || this.loadingMore) return;
+          this.loadingMore = true;
+          try {
+            const tok = encodeURIComponent(this.continuationToken);
+            const data = await window.api.get(`/api/searches?limit=20&continuationToken=${tok}`);
+            this.searches = [...this.searches, ...(data.searches || [])];
+            this.continuationToken = data.continuationToken;
+            this.hasMore = data.hasMore;
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.loadingMore = false;
+          }
+        },
+
+        async runSearch(id) {
+          if (this.runningIds.has(id)) return;
+          this.runningIds = new Set([...this.runningIds, id]);
+          try {
+            await window.api.post(`/api/searches/${id}/run`);
+            this.showToast('Job queued — prices update shortly', 'success');
+            const idx = this.searches.findIndex(s => s.id === id);
+            if (idx >= 0) {
+              this.searches[idx] = { ...this.searches[idx], lastRunAt: new Date().toISOString() };
+              this.searches = [...this.searches];
+            }
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.runningIds = new Set([...this.runningIds].filter(x => x !== id));
+          }
+        },
+
+        async toggleActive(search) {
+          try {
+            const updated = await window.api.patch(`/api/searches/${search.id}`, { isActive: !search.isActive });
+            const idx = this.searches.findIndex(s => s.id === search.id);
+            if (idx >= 0) {
+              this.searches[idx] = { ...this.searches[idx], isActive: updated.isActive };
+              this.searches = [...this.searches];
+            }
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          }
+        },
+
+        confirmDelete(id) {
+          this.deleteConfirmId = id;
+        },
+
+        async deleteSearch() {
+          if (!this.deleteConfirmId) return;
+          const id = this.deleteConfirmId;
+          this.deleteConfirmId = null;
+          try {
+            await window.api.del(`/api/searches/${id}`);
+            this.searches = this.searches.filter(s => s.id !== id);
+            this.showToast('Search removed', 'success');
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          }
+        },
+
+        async logout() {
+          try { await window.api.post('/auth/logout'); } catch {}
+          window.location.href = '/';
+        },
+
+        showToast(message, type = 'info') {
+          clearTimeout(this.toastTimer);
+          this.toast = { message, type };
+          this.toastTimer = setTimeout(() => { this.toast = null; }, 4000);
+        },
+
+        formatDate(iso) {
+          if (!iso) return '—';
+          return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        },
+
+        formatRelative(iso) {
+          if (!iso) return 'Never';
+          const diff = Date.now() - new Date(iso).getTime();
+          const m = Math.floor(diff / 60000);
+          if (m < 1) return 'Just now';
+          if (m < 60) return `${m}m ago`;
+          const h = Math.floor(m / 60);
+          if (h < 24) return `${h}h ago`;
+          return `${Math.floor(h / 24)}d ago`;
+        },
+
+        formatPrice(price) {
+          if (!price?.numericPrice) return '—';
+          const currency = price.currency || 'EUR';
+          return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(price.numericPrice);
+        },
+
+        getLowestPrice(search) {
+          if (!search.latestPrices?.length) return null;
+          return search.latestPrices.reduce((min, p) => (p.numericPrice < (min?.numericPrice ?? Infinity) ? p : min), null);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

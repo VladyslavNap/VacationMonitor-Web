@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body x-data="settings()" x-cloak>
+
+  <!-- ── Navigation ───────────────────────────────────────── -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="/dashboard" class="nav__brand">
+        <div class="nav__brand-icon" aria-hidden="true">✈</div>
+        VacationMonitor
+      </a>
+      <div class="nav__actions">
+        <template x-if="user">
+          <div class="flex items-center gap-2">
+            <a href="/new-search" class="btn btn--primary btn--sm">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Search
+            </a>
+            <button @click="logout()" class="btn btn--secondary btn--icon" title="Sign out" aria-label="Sign out">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="page">
+    <div class="container" style="max-width:640px">
+
+      <!-- Back -->
+      <a href="/dashboard" class="back-link">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Dashboard
+      </a>
+
+      <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Manage your account and notification preferences.</p>
+      </div>
+
+      <!-- Skeleton -->
+      <div x-show="loading" class="form-stack">
+        <div class="skeleton-card" style="height:110px"></div>
+        <div class="skeleton-card" style="height:140px"></div>
+        <div class="skeleton-card" style="height:130px"></div>
+      </div>
+
+      <div x-show="!loading" class="form-stack">
+
+        <!-- Profile card -->
+        <div class="card">
+          <div class="profile-card">
+            <div class="profile-avatar">
+              <template x-if="user?.photoURL">
+                <img :src="user.photoURL" :alt="user.displayName" />
+              </template>
+              <template x-if="!user?.photoURL">
+                <span x-text="(user?.displayName || user?.email || '?')[0].toUpperCase()"></span>
+              </template>
+            </div>
+            <div class="min-w-0">
+              <div class="profile-name truncate" x-text="user?.displayName || 'Unknown user'"></div>
+              <div class="profile-email truncate" x-text="user?.email"></div>
+              <div class="text-xs text-muted mt-1">
+                Member since <span x-text="formatDate(user?.createdAt)"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Email notifications -->
+        <div class="card">
+          <div class="card__body">
+            <p class="section-label">Notifications</p>
+            <h2 style="font-size:1rem;font-weight:700;margin-bottom:4px">Email alerts</h2>
+            <p class="text-sm text-muted mb-4" style="line-height:1.5">
+              Receive an email whenever a price update is available for your active searches.
+            </p>
+            <label class="toggle-wrap">
+              <div :class="user?.emailPreferences?.enabled ? 'toggle toggle--on' : 'toggle'"
+                   @click="toggleNotifications()"
+                   :aria-checked="user?.emailPreferences?.enabled"
+                   role="switch"
+                   tabindex="0"
+                   @keydown.space.prevent="toggleNotifications()"
+                   @keydown.enter.prevent="toggleNotifications()"></div>
+              <div>
+                <div class="toggle-label" x-text="user?.emailPreferences?.enabled ? 'Notifications enabled' : 'Notifications disabled'"></div>
+                <div class="toggle-desc" x-text="user?.emailPreferences?.enabled ? 'You will receive email alerts for price updates.' : 'No email alerts will be sent.'"></div>
+              </div>
+              <template x-if="saving">
+                <span class="spinner ml-2" aria-label="Saving…" style="color:var(--c-primary)"></span>
+              </template>
+            </label>
+          </div>
+        </div>
+
+        <!-- Sign-out -->
+        <div class="card">
+          <div class="card__body">
+            <p class="section-label">Session</p>
+            <h2 style="font-size:1rem;font-weight:700;margin-bottom:4px">Sign out</h2>
+            <p class="text-sm text-muted mb-4">You are currently signed in as <strong x-text="user?.email"></strong>.</p>
+            <button @click="logout()" class="btn btn--secondary">
+              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+              Sign out of this account
+            </button>
+          </div>
+        </div>
+
+        <!-- Danger zone -->
+        <div class="card">
+          <div class="card__body">
+            <div class="danger-zone">
+              <p class="danger-zone__title">⚠ Danger Zone</p>
+              <p class="danger-zone__text">
+                Permanently delete your account and all associated data. Active searches will be stopped.
+                <strong>This action cannot be undone.</strong>
+              </p>
+              <button @click="showDeleteConfirm = true" class="btn btn--danger">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                Delete my account
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /form-stack -->
+    </div>
+  </main>
+
+  <!-- ── Delete account modal ─────────────────────────────── -->
+  <div x-show="showDeleteConfirm" class="overlay" role="dialog" aria-modal="true" aria-labelledby="del-acct-title"
+       @keydown.escape.window="showDeleteConfirm = false">
+    <div class="dialog">
+      <h2 class="dialog__title" id="del-acct-title">Delete account permanently?</h2>
+      <p class="dialog__body">
+        All your searches, price history and settings will be permanently removed.
+        To confirm, type your email address below.
+      </p>
+      <div class="form-group mb-4">
+        <label for="confirmEmail" class="label">Your email</label>
+        <input id="confirmEmail" type="email" class="input" x-model="deleteEmailInput"
+               :placeholder="user?.email" autocomplete="off"
+               @keydown.enter="deleteAccount()" />
+      </div>
+      <div class="dialog__actions">
+        <button @click="showDeleteConfirm = false; deleteEmailInput = ''" class="btn btn--secondary">Cancel</button>
+        <button @click="deleteAccount()" :disabled="deleting" class="btn btn--danger-solid">
+          <template x-if="deleting"><span class="spinner" aria-hidden="true"></span></template>
+          <span x-text="deleting ? 'Deleting…' : 'Delete my account'"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast ─────────────────────────────────────────────── -->
+  <div class="toast-region" role="status" aria-live="polite">
+    <div x-show="toast" x-transition :class="`toast toast--${toast?.type}`">
+      <span class="toast__icon" x-text="toast?.type === 'success' ? '✓' : '✕'" aria-hidden="true"></span>
+      <span x-text="toast?.message"></span>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
+    function settings() {
+      return {
+        user: null,
+        loading: true,
+        saving: false,
+        deleting: false,
+        showDeleteConfirm: false,
+        deleteEmailInput: '',
+        toast: null,
+
+        async init() {
+          this.user = await window.requireAuth();
+          if (!this.user) return;
+          this.loading = false;
+        },
+
+        async toggleNotifications() {
+          if (this.saving) return;
+          this.saving = true;
+          try {
+            const updated = await window.api.patch('/api/users/me', {
+              emailPreferences: { enabled: !this.user.emailPreferences?.enabled }
+            });
+            this.user = { ...this.user, emailPreferences: updated.emailPreferences };
+            this.showToast('Preferences saved', 'success');
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.saving = false;
+          }
+        },
+
+        async deleteAccount() {
+          if (this.deleteEmailInput.trim() !== this.user.email) {
+            this.showToast('Email does not match — please type your exact email address', 'error');
+            return;
+          }
+          this.deleting = true;
+          try {
+            await window.api.del('/api/users/me');
+            window.location.href = '/';
+          } catch (e) {
+            this.showToast(e.message, 'error');
+            this.deleting = false;
+          }
+        },
+
+        async logout() {
+          try { await window.api.post('/auth/logout'); } catch {}
+          window.location.href = '/';
+        },
+
+        formatDate(iso) {
+          if (!iso) return '—';
+          return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        },
+
+        showToast(message, type = 'info') {
+          this.toast = { message, type };
+          setTimeout(() => { this.toast = null; }, 4000);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

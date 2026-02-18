@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Search Detail — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body x-data="searchDetail()" x-cloak>
+
+  <!-- ── Navigation ───────────────────────────────────────── -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="/dashboard" class="nav__brand">
+        <div class="nav__brand-icon" aria-hidden="true">✈</div>
+        VacationMonitor
+      </a>
+      <div class="nav__actions">
+        <template x-if="user">
+          <div class="flex items-center gap-2">
+            <a href="/new-search" class="btn btn--primary btn--sm">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Search
+            </a>
+            <a href="/settings" class="nav__user-btn" aria-label="Account settings">
+              <div class="nav__avatar">
+                <template x-if="user.photoURL">
+                  <img :src="user.photoURL" :alt="user.displayName" />
+                </template>
+                <template x-if="!user.photoURL">
+                  <span x-text="(user.displayName || user.email || '?')[0].toUpperCase()"></span>
+                </template>
+              </div>
+              <span class="nav__name" x-text="user.displayName || user.email"></span>
+            </a>
+            <button @click="logout()" class="btn btn--secondary btn--icon" title="Sign out" aria-label="Sign out">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="page">
+    <div class="container">
+
+      <!-- Back -->
+      <a href="/dashboard" class="back-link">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        All searches
+      </a>
+
+      <!-- Skeleton hero -->
+      <div x-show="loadingSearch" class="detail-hero" style="min-height:130px">
+        <div class="sk sk-text sk-text--xl" style="width:50%;margin-bottom:12px"></div>
+        <div class="sk sk-text" style="width:70%;margin-bottom:8px"></div>
+        <div class="sk sk-text" style="width:40%"></div>
+      </div>
+
+      <!-- Detail hero -->
+      <div x-show="!loadingSearch && search" class="detail-hero">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div class="min-w-0">
+            <h1 class="detail-hero__title truncate" x-text="search?.searchName || 'Unnamed search'"></h1>
+            <!-- Criteria chips -->
+            <div class="chips mt-2">
+              <template x-if="search?.criteria?.cityName">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><circle cx="12" cy="11" r="3"/></svg>
+                  <span x-text="search.criteria.cityName"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.checkIn">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                  <span x-text="`${search.criteria.checkIn} → ${search.criteria.checkOut}`"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.adults">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  <span x-text="`${search.criteria.adults} adult${search.criteria.adults !== 1 ? 's' : ''}`"></span>
+                </span>
+              </template>
+              <span :class="search?.isActive ? 'badge badge--active' : 'badge badge--paused'"
+                    x-text="search?.isActive ? 'Active' : 'Paused'"></span>
+            </div>
+          </div>
+        </div>
+        <div class="detail-hero__actions">
+          <button @click="runSearch()" :disabled="running" class="btn btn--hero-primary btn--sm">
+            <template x-if="!running">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+            </template>
+            <template x-if="running"><span class="spinner" aria-hidden="true" style="border-color:#2563eb;border-right-color:transparent"></span></template>
+            <span x-text="running ? 'Queuing…' : 'Run now'"></span>
+          </button>
+          <a :href="`/new-search?id=${searchId}`" class="btn btn--hero btn--sm">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+            Edit
+          </a>
+          <button @click="exportCsv()" class="btn btn--hero btn--sm">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/><path d="M3 7V5a1 1 0 011-1h4l2 2h8a1 1 0 011 1v4"/></svg>
+            Export CSV
+          </button>
+          <span x-show="search?.schedule?.nextRun" class="text-sm" style="color:rgba(255,255,255,.6);align-self:center">
+            Next run: <span x-text="formatDateTime(search?.schedule?.nextRun)" style="color:rgba(255,255,255,.85)"></span>
+          </span>
+        </div>
+      </div>
+
+      <!-- ── Price chart ───────────────────────────────────── -->
+      <div class="card mt-4">
+        <div class="card__body">
+          <div class="flex items-center justify-between gap-4 flex-wrap mb-4">
+            <div>
+              <p class="section-label">Price History</p>
+              <h2 style="font-size:1.05rem;font-weight:700">Price trend over time</h2>
+            </div>
+            <!-- Date filter -->
+            <div class="flex items-center gap-2 flex-wrap">
+              <input type="date" class="input" style="width:150px;height:34px;font-size:0.8rem"
+                     x-model="filterStart" :max="filterEnd || today"
+                     aria-label="Start date filter" />
+              <span class="text-muted text-sm">to</span>
+              <input type="date" class="input" style="width:150px;height:34px;font-size:0.8rem"
+                     x-model="filterEnd" :min="filterStart" :max="today"
+                     aria-label="End date filter" />
+              <button @click="applyFilter()" class="btn btn--primary btn--sm">Apply</button>
+            </div>
+          </div>
+
+          <!-- Chart skeleton -->
+          <div x-show="loadingPrices" class="chart-wrap flex items-center justify-center">
+            <div class="flex-col items-center gap-3" style="text-align:center">
+              <span class="spinner spinner--lg" style="color:var(--c-primary)" aria-hidden="true"></span>
+              <span class="text-sm text-muted">Loading price data…</span>
+            </div>
+          </div>
+
+          <!-- No price data -->
+          <div x-show="!loadingPrices && prices.length === 0" class="chart-wrap flex items-center justify-center">
+            <div class="empty-state" style="padding:32px 20px">
+              <div class="empty-state__icon" aria-hidden="true">📊</div>
+              <p class="empty-state__title">No price data yet</p>
+              <p class="empty-state__text">Run the search to collect pricing data and chart will populate here.</p>
+            </div>
+          </div>
+
+          <!-- Chart canvas -->
+          <div x-show="!loadingPrices && prices.length > 0" class="chart-wrap">
+            <canvas id="priceChart" role="img" aria-label="Price trend chart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Latest prices table ───────────────────────────── -->
+      <div class="card mt-4">
+        <div class="card__body" style="padding-bottom:0">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <div>
+              <p class="section-label">Current Prices</p>
+              <h2 style="font-size:1.05rem;font-weight:700">
+                Latest results
+                <span x-show="prices.length" class="badge badge--running ml-1" x-text="prices.length + ' results'"></span>
+              </h2>
+            </div>
+            <span x-show="search?.latestPrices?.length" class="text-xs text-muted" x-text="'Extracted ' + formatDateTime(search?.latestPrices?.[0]?.extractedAt)"></span>
+          </div>
+        </div>
+
+        <!-- Table skeleton -->
+        <div x-show="loadingPrices" style="padding:20px">
+          <template x-for="i in 5" :key="i">
+            <div class="flex gap-4 mb-3">
+              <div class="sk sk-text" style="flex:3"></div>
+              <div class="sk sk-text" style="flex:1"></div>
+              <div class="sk sk-text" style="flex:1"></div>
+              <div class="sk sk-text" style="flex:1"></div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Empty -->
+        <div x-show="!loadingPrices && prices.length === 0" style="padding:32px 20px;text-align:center">
+          <p class="text-muted text-sm">No prices available. Run the search to collect data.</p>
+        </div>
+
+        <!-- Table -->
+        <div x-show="!loadingPrices && prices.length > 0" class="table-wrap" style="border-radius:0;border:none;border-top:1px solid var(--c-border)">
+          <table>
+            <thead>
+              <tr>
+                <th class="sortable" @click="setSort('hotelName')" :aria-sort="sortField === 'hotelName' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Hotel <span x-text="sortField === 'hotelName' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
+                <th>Stars</th>
+                <th>Location</th>
+                <th class="sortable" @click="setSort('numericPrice')" :aria-sort="sortField === 'numericPrice' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Price <span x-text="sortField === 'numericPrice' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
+                <th>Recorded</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="price in sortedPrices" :key="price.id">
+                <tr>
+                  <td class="td-hotel" x-text="price.hotelName || '—'"></td>
+                  <td class="td-stars" x-text="ratingStars(price.rating)"></td>
+                  <td class="td-muted" x-text="price.location || price.cityName || '—'"></td>
+                  <td class="td-price" x-text="fmtPrice(price.numericPrice)"></td>
+                  <td class="td-muted" x-text="formatDateTime(price.extractedAt)"></td>
+                  <td>
+                    <a x-show="price.hotelUrl" :href="price.hotelUrl" target="_blank" rel="noopener noreferrer"
+                       class="btn btn--ghost btn--xs" aria-label="View hotel on Booking.com">
+                      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                      Book
+                    </a>
+                  </td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+        <div x-show="!loadingPrices && prices.length > 100" class="card__footer">
+          <span class="text-xs text-muted">Showing first 100 results. Export CSV for full data.</span>
+        </div>
+      </div>
+
+      <!-- ── AI Insights ───────────────────────────────────── -->
+      <div class="card mt-4" style="overflow:visible">
+        <!-- Insights toggle header -->
+        <div class="insights-toggle" @click="insightsOpen = !insightsOpen" role="button" :aria-expanded="insightsOpen" aria-controls="insights-body">
+          <div class="insights-toggle__title">
+            <span aria-hidden="true">🤖</span>
+            AI Insights
+            <template x-if="loadingInsights">
+              <span class="badge badge--running">Loading…</span>
+            </template>
+            <template x-if="!loadingInsights && insights?.hasInsights">
+              <span class="badge badge--active">Available</span>
+            </template>
+            <template x-if="!loadingInsights && !insights?.hasInsights">
+              <span class="badge badge--paused">Not yet generated</span>
+            </template>
+          </div>
+          <svg :style="`transform:rotate(${insightsOpen ? 180 : 0}deg);transition:transform .2s`" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="m6 9 6 6 6-6"/>
+          </svg>
+        </div>
+
+        <div id="insights-body" x-show="insightsOpen" x-transition>
+          <!-- Skeleton -->
+          <div x-show="loadingInsights" class="insights-body">
+            <div class="sk sk-text mb-2" style="width:80%"></div>
+            <div class="sk sk-text mb-2" style="width:60%"></div>
+            <div class="sk sk-text" style="width:70%"></div>
+          </div>
+          <!-- No insights -->
+          <div x-show="!loadingInsights && !insights?.hasInsights" class="insights-body">
+            <p style="font-size:.875rem;color:var(--c-text-muted)">
+              AI analysis runs automatically after the first price collection. Run the search and check back shortly.
+            </p>
+          </div>
+          <!-- Insights content -->
+          <div x-show="!loadingInsights && insights?.hasInsights"
+               class="insights-body"
+               x-html="insights?.content || ''">
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Toast ─────────────────────────────────────────────── -->
+  <div class="toast-region" role="status" aria-live="polite">
+    <div x-show="toast" x-transition :class="`toast toast--${toast?.type}`">
+      <span class="toast__icon" x-text="toast?.type === 'success' ? '✓' : '✕'" aria-hidden="true"></span>
+      <span x-text="toast?.message"></span>
+    </div>
+  </div>
+
+  <script src="/assets/js/api.js"></script>
+  <script src="/assets/js/auth.js"></script>
+  <script>
+    function searchDetail() {
+      return {
+        user: null,
+        search: null,
+        prices: [],
+        loadingSearch: true,
+        loadingPrices: true,
+        loadingInsights: true,
+        running: false,
+        insights: null,
+        insightsOpen: false,
+        chart: null,
+        sortField: 'numericPrice',
+        sortDir: 'asc',
+        filterStart: '',
+        filterEnd: '',
+        toast: null,
+        searchId: null,
+        today: new Date().toISOString().substring(0, 10),
+
+        async init() {
+          this.user = await window.requireAuth();
+          if (!this.user) return;
+          this.searchId = new URLSearchParams(window.location.search).get('id');
+          if (!this.searchId) { window.location.href = '/dashboard'; return; }
+          await Promise.all([this.loadSearch(), this.loadPrices(), this.loadInsights()]);
+        },
+
+        async loadSearch() {
+          this.loadingSearch = true;
+          try {
+            this.search = await window.api.get(`/api/searches/${this.searchId}`);
+            document.title = `${this.search.searchName} — VacationMonitor`;
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.loadingSearch = false;
+          }
+        },
+
+        async loadPrices() {
+          this.loadingPrices = true;
+          if (this.chart) { this.chart.destroy(); this.chart = null; }
+          try {
+            let url = `/api/searches/${this.searchId}/prices?limit=200`;
+            if (this.filterStart) url += `&startDate=${this.filterStart}`;
+            if (this.filterEnd) url += `&endDate=${this.filterEnd}`;
+            const data = await window.api.get(url);
+            this.prices = data.prices || [];
+            // render chart on next tick
+            setTimeout(() => this.renderChart(), 50);
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.loadingPrices = false;
+          }
+        },
+
+        async loadInsights() {
+          this.loadingInsights = true;
+          try {
+            this.insights = await window.api.get(`/api/searches/${this.searchId}/insights`);
+          } catch {
+            this.insights = { hasInsights: false };
+          } finally {
+            this.loadingInsights = false;
+          }
+        },
+
+        async runSearch() {
+          if (this.running) return;
+          this.running = true;
+          try {
+            await window.api.post(`/api/searches/${this.searchId}/run`);
+            this.showToast('Job queued — prices updating shortly', 'success');
+          } catch (e) {
+            this.showToast(e.message, 'error');
+          } finally {
+            this.running = false;
+          }
+        },
+
+        exportCsv() {
+          window.open(`/api/searches/${this.searchId}/export`, '_blank');
+        },
+
+        applyFilter() {
+          this.loadPrices();
+        },
+
+        renderChart() {
+          const canvas = document.getElementById('priceChart');
+          if (!canvas || !this.prices.length) return;
+          if (this.chart) { this.chart.destroy(); this.chart = null; }
+
+          // Find top 5 hotels by frequency
+          const counts = {};
+          for (const p of this.prices) {
+            counts[p.hotelName] = (counts[p.hotelName] || 0) + 1;
+          }
+          const topHotels = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h]) => h);
+
+          // Collect all unique dates sorted
+          const dateSet = new Set();
+          for (const p of this.prices) {
+            const d = (p.extractedAt || p.searchDate || '').substring(0, 10);
+            if (d) dateSet.add(d);
+          }
+          const labels = [...dateSet].sort();
+
+          const colors = ['#2563eb', '#f97316', '#16a34a', '#7c3aed', '#dc2626'];
+
+          const datasets = topHotels.map((hotel, i) => {
+            const byDate = {};
+            for (const p of this.prices) {
+              if (p.hotelName !== hotel) continue;
+              const d = (p.extractedAt || p.searchDate || '').substring(0, 10);
+              if (!d) continue;
+              if (byDate[d] === undefined || p.numericPrice < byDate[d]) byDate[d] = p.numericPrice;
+            }
+            return {
+              label: hotel,
+              data: labels.map(d => byDate[d] ?? null),
+              borderColor: colors[i],
+              backgroundColor: colors[i] + '18',
+              borderWidth: 2.5,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              tension: 0.35,
+              fill: i === 0,
+              spanGaps: true,
+            };
+          });
+
+          const currency = this.search?.criteria?.currency || 'EUR';
+          const fmt = (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(v);
+
+          this.chart = new Chart(canvas, {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { intersect: false, mode: 'index' },
+              plugins: {
+                legend: { position: 'top', labels: { font: { size: 12, family: 'system-ui' }, padding: 18, usePointStyle: true } },
+                tooltip: {
+                  callbacks: {
+                    label: ctx => ctx.raw != null ? `${ctx.dataset.label}: ${fmt(ctx.raw)}` : null
+                  }
+                }
+              },
+              scales: {
+                x: { grid: { color: '#e2e8f040' }, ticks: { maxTicksLimit: 8, font: { size: 11 } } },
+                y: {
+                  grid: { color: '#e2e8f0' },
+                  ticks: { font: { size: 11 }, callback: fmt }
+                }
+              }
+            }
+          });
+        },
+
+        get sortedPrices() {
+          const field = this.sortField;
+          const dir = this.sortDir === 'asc' ? 1 : -1;
+          return [...this.prices]
+            .sort((a, b) => {
+              const av = a[field], bv = b[field];
+              return av < bv ? -dir : av > bv ? dir : 0;
+            })
+            .slice(0, 100);
+        },
+
+        setSort(field) {
+          if (this.sortField === field) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortField = field;
+            this.sortDir = 'asc';
+          }
+        },
+
+        fmtPrice(v) {
+          if (v == null) return '—';
+          const currency = this.search?.criteria?.currency || 'EUR';
+          return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(v);
+        },
+
+        ratingStars(rating) {
+          if (!rating) return '—';
+          const n = parseFloat(rating);
+          if (isNaN(n)) return rating;
+          const full = Math.round(n / 2);
+          return '★'.repeat(Math.min(full, 5)) + '☆'.repeat(Math.max(0, 5 - full));
+        },
+
+        formatDate(iso) {
+          if (!iso) return '—';
+          return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+        },
+
+        formatDateTime(iso) {
+          if (!iso) return '—';
+          return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        },
+
+        async logout() {
+          try { await window.api.post('/auth/logout'); } catch {}
+          window.location.href = '/';
+        },
+
+        showToast(message, type = 'info') {
+          this.toast = { message, type };
+          setTimeout(() => { this.toast = null; }, 4000);
+        }
+      };
+    }
+  </script>
+</body>
+</html>

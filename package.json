@@ -28,6 +28,7 @@
     "@fastify/oauth2": "^8.2.0",
     "@fastify/rate-limit": "^10.3.0",
     "@fastify/secure-session": "^8.3.0",
+    "@fastify/static": "^9.0.0",
     "ajv": "^8.12.0",
     "csv-parse": "^6.1.0",
     "csv-writer": "^1.6.0",
