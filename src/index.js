@@ -1,11 +1,22 @@
 import dotenv from 'dotenv';
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+import { join, dirname } from 'path';
 
 const require = createRequire(import.meta.url);
 const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-dotenv.config();
+// Load .env file for local development
+// In Azure App Service, environment variables are provided directly by the platform
+const envPath = join(__dirname, '..', '.env');
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+  console.log('✓ Loaded environment variables from .env file');
+} else {
+  console.log('ℹ No .env file found — using environment variables from system (Azure App Service)');
+}
 
 const logger = require('./logger.cjs');
 
