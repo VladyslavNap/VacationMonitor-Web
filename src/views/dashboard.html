@@ -19,7 +19,7 @@
       <div class="nav__actions">
         <template x-if="user">
           <div class="flex items-center gap-2">
-            <a href="/new-search" class="btn btn--primary btn--sm" style="display:none" id="new-search-nav-btn">
+            <a href="/new-search" class="btn btn--primary btn--sm" x-show="user">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
               New Search
             </a>
@@ -56,7 +56,7 @@
             <h1 class="page-title">My Searches</h1>
             <p class="page-subtitle" x-show="!loading" x-text="searches.length + ' active monitor' + (searches.length !== 1 ? 's' : '')"></p>
           </div>
-          <a href="/new-search" class="btn btn--primary" style="display:none" id="new-search-header-btn">
+          <a href="/new-search" class="btn btn--primary" x-show="user">
             <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
             New Search
           </a>
@@ -237,9 +237,6 @@
         async init() {
           this.user = await window.requireAuth();
           if (!this.user) return;
-          // Show nav buttons now that we're authenticated
-          document.getElementById('new-search-nav-btn').style.display = '';
-          document.getElementById('new-search-header-btn').style.display = '';
           await this.loadSearches();
         },
 

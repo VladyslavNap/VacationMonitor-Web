@@ -146,7 +146,7 @@ export async function buildApp(opts = {}) {
       // Redirect authenticated users straight to their dashboard
       const sessionUser = request.session.get('user');
       if (sessionUser) {
-        return reply.redirect(302, '/dashboard');
+        return reply.redirect('/dashboard', 302);
       }
       return reply.type('text/html; charset=utf-8').send(homePageTemplate);
     });

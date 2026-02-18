@@ -48,8 +48,8 @@ export async function authenticate(request, reply) {
       photoURL: user.photoURL
     };
 
-    // Add user context to logger
-    request.log = logger.child({ userId: user.id, email: user.email });
+    // Add user context to logger (use request.logger to avoid overwriting Fastify's request.log)
+    request.logger = logger.child({ userId: user.id, email: user.email });
 
   } catch (error) {
     logger.error('Authentication error', { error: error.message });
@@ -77,7 +77,7 @@ export async function optionalAuth(request, reply) {
           displayName: user.displayName,
           photoURL: user.photoURL
         };
-        request.log = logger.child({ userId: user.id, email: user.email });
+        request.logger = logger.child({ userId: user.id, email: user.email });
       }
     }
   } catch (error) {
