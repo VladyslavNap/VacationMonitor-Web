@@ -88,6 +88,42 @@
                   <span x-text="`${search.criteria.adults} adult${search.criteria.adults !== 1 ? 's' : ''}`"></span>
                 </span>
               </template>
+              <template x-if="search?.criteria?.children > 0">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/></svg>
+                  <span x-text="getChildrenLabel(search.criteria)"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.reviewScore">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span x-text="`${search.criteria.reviewScore / 10}+ rating`"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.mealPlan">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+                  <span x-text="getMealPlanLabel(search.criteria.mealPlan)"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.stayType">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                  <span x-text="getStayTypeLabel(search.criteria.stayType)"></span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.travellingWithPets">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11.38 2.093a1 1 0 011.24 0l5.34 4.17a1 1 0 01.38.78v1.457a3.5 3.5 0 11-7 0V7.043a1 1 0 01.38-.78l5.34-4.17z"/><ellipse cx="8" cy="12.5" rx="2.5" ry="2.25"/><ellipse cx="16" cy="12.5" rx="2.5" ry="2.25"/></svg>
+                  <span>Pet friendly</span>
+                </span>
+              </template>
+              <template x-if="search?.criteria?.minPrice || search?.criteria?.maxPrice">
+                <span class="chip" style="background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2);color:#fff">
+                  <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 100 4h4a2 2 0 110 4H8M12 18V6"/></svg>
+                  <span x-text="getPriceRangeLabel(search.criteria)"></span>
+                </span>
+              </template>
               <span :class="search?.isActive ? 'badge badge--active' : 'badge badge--paused'"
                     x-text="search?.isActive ? 'Active' : 'Paused'"></span>
             </div>
@@ -496,6 +532,49 @@
         formatDateTime(iso) {
           if (!iso) return '—';
           return new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        },
+
+        getMealPlanLabel(mealPlan) {
+          const labels = {
+            1: 'Breakfast included',
+            9: 'Breakfast & dinner',
+            3: 'All meals included'
+          };
+          return labels[mealPlan] || 'Meals included';
+        },
+
+        getStayTypeLabel(stayType) {
+          const labels = {
+            204: 'Hotels',
+            220: 'Apartments',
+            201: 'Hostels',
+            216: 'Guest houses',
+            213: 'B&Bs',
+            222: 'Villas',
+            206: 'Resorts'
+          };
+          return labels[stayType] || 'Property type filter';
+        },
+
+        getPriceRangeLabel(criteria) {
+          const currency = criteria.currency || 'EUR';
+          if (criteria.minPrice && criteria.maxPrice) {
+            return `${currency} ${criteria.minPrice}-${criteria.maxPrice}`;
+          } else if (criteria.minPrice) {
+            return `From ${currency} ${criteria.minPrice}`;
+          } else if (criteria.maxPrice) {
+            return `Up to ${currency} ${criteria.maxPrice}`;
+          }
+          return '';
+        },
+
+        getChildrenLabel(criteria) {
+          const count = criteria.children || 0;
+          const ages = criteria.childAges || [];
+          if (ages.length > 0) {
+            return `${count} child${count !== 1 ? 'ren' : ''} (ages ${ages.join(', ')})`;
+          }
+          return `${count} child${count !== 1 ? 'ren' : ''}`;
         },
 
         async logout() {

@@ -120,7 +120,15 @@
                 </div>
                 <div class="meta-row" x-show="search.criteria?.adults">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                  <span x-text="`${search.criteria?.adults || 0} adult${search.criteria?.adults !== 1 ? 's' : ''}${search.criteria?.children ? `, ${search.criteria.children} child${search.criteria.children !== 1 ? 'ren' : ''}` : ''}`"></span>
+                  <span x-text="getGuestsLabel(search.criteria)"></span>
+                </div>
+                <div class="meta-row" x-show="search.criteria?.reviewScore">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                  <span x-text="`${search.criteria.reviewScore / 10}+ rating`"></span>
+                </div>
+                <div class="meta-row" x-show="search.criteria?.travellingWithPets">
+                  <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="9" r="2"/><circle cx="16" cy="9" r="2"/><path d="M12 17c2-2 4.5-2 6.5 0"/></svg>
+                  <span>Pet friendly</span>
                 </div>
                 <div class="meta-row">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -343,6 +351,21 @@
           const h = Math.floor(m / 60);
           if (h < 24) return `${h}h ago`;
           return `${Math.floor(h / 24)}d ago`;
+        },
+
+        getGuestsLabel(criteria) {
+          const adults = criteria?.adults || 0;
+          const children = criteria?.children || 0;
+          const ages = criteria?.childAges || [];
+          let label = `${adults} adult${adults !== 1 ? 's' : ''}`;
+          if (children > 0) {
+            if (ages.length > 0) {
+              label += `, ${children} child${children !== 1 ? 'ren' : ''} (ages ${ages.join(', ')})`;
+            } else {
+              label += `, ${children} child${children !== 1 ? 'ren' : ''}`;
+            }
+          }
+          return label;
         },
 
         formatPrice(price) {

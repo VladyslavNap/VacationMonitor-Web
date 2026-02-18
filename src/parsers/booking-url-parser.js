@@ -13,6 +13,39 @@ import { URL } from 'url';
 
 class BookingURLParser {
   /**
+   * Parse nflt parameter into filter object
+   * @param {string} nfltString - The nflt parameter value
+   * @returns {Object} Parsed filters from nflt
+   * @private
+   */
+  _parseNfltParameter(nfltString) {
+    const filters = {};
+    
+    if (!nfltString) {
+      return filters;
+    }
+    
+    // Split by semicolon to get individual filters
+    // nflt format: key1=value1;key2=value2;key3=value3
+    const filterPairs = nfltString.split(';');
+    
+    for (const pair of filterPairs) {
+      // Handle both encoded (%3D) and plain (=) equals signs
+      const parts = pair.split(/[=]/);
+      if (parts.length >= 2) {
+        const key = parts[0].trim();
+        const value = parts.slice(1).join('=').trim(); // Rejoin in case value contains =
+        
+        if (key && value) {
+          filters[key] = value;
+        }
+      }
+    }
+    
+    return filters;
+  }
+
+  /**
    * Parse a Booking.com search URL into structured criteria
    * @param {string} urlString - The Booking.com search URL
    * @returns {Object} Parsed search criteria
@@ -85,21 +118,75 @@ class BookingURLParser {
 
       // Extract optional filters
       const currency = params.get('selected_currency') || 'EUR';
-      const minPrice = params.get('min_price') ? parseInt(params.get('min_price'), 10) : null;
-      const maxPrice = params.get('max_price') ? parseInt(params.get('max_price'), 10) : null;
-      const reviewScore = params.get('review_score') ? parseInt(params.get('review_score'), 10) : null;
-      const mealPlan = params.get('meal_plan') ? parseInt(params.get('meal_plan'), 10) : null;
-
-      // Extract property type filter from nflt parameter
-      // Example: nflt=ht_id%3D204 means hotel type ID = 204 (hotels only)
-      let stayType = null;
+      
+      // Parse nflt parameter for additional filters
       const nflt = params.get('nflt');
-      if (nflt) {
-        const htMatch = nflt.match(/ht_id(?:%3D|=)(\d+)/);
-        if (htMatch) {
-          stayType = parseInt(htMatch[1], 10);
+      const nfltFilters = this._parseNfltParameter(nflt);
+      
+      // Extract price range - support both query params and nflt format
+      // nflt format: price=EUR-170-340-1 or price=EUR-min-340-1
+      let minPrice = null;
+      let maxPrice = null;
+      
+      if (nfltFilters.price) {
+        // Parse price from nflt format
+        // Common formats:
+        // - EUR-170-340-1 = min 170, max 340
+        // - EUR-min-340-1 = max 340 only (counterintuitively, "min" means "up to")
+        // - EUR-max-500-1 = min 500 only (if this exists)
+        const priceMatch = nfltFilters.price.match(/([A-Z]+)-(\d+|min|max)-(\d+)/);
+        if (priceMatch) {
+          const val1 = priceMatch[2];
+          const val2 = priceMatch[3];
+          
+          if (val1 === 'min') {
+            // "min" in nflt actually means maximum price (up to this value)
+            maxPrice = parseInt(val2, 10);
+          } else if (val1 === 'max') {
+            // "max" in nflt actually means minimum price (starting from this value)
+            minPrice = parseInt(val2, 10);
+          } else {
+            // Two numbers: first is min, second is max
+            minPrice = parseInt(val1, 10);
+            maxPrice = parseInt(val2, 10);
+          }
         }
       }
+      
+      // Fallback to query parameters if not in nflt
+      if (minPrice === null && params.get('min_price')) {
+        minPrice = parseInt(params.get('min_price'), 10);
+      }
+      if (maxPrice === null && params.get('max_price')) {
+        maxPrice = parseInt(params.get('max_price'), 10);
+      }
+      
+      // Extract review score - nflt takes precedence over query param
+      let reviewScore = null;
+      if (nfltFilters.review_score) {
+        reviewScore = parseInt(nfltFilters.review_score, 10);
+      } else if (params.get('review_score')) {
+        reviewScore = parseInt(params.get('review_score'), 10);
+      }
+      
+      // Extract meal plan - nflt takes precedence (note: nflt uses 'mealplan', query uses 'meal_plan')
+      let mealPlan = null;
+      if (nfltFilters.mealplan) {
+        mealPlan = parseInt(nfltFilters.mealplan, 10);
+      } else if (params.get('meal_plan')) {
+        mealPlan = parseInt(params.get('meal_plan'), 10);
+      }
+      
+      // Extract property/stay type - support both ht_id and stay_type from nflt
+      let stayType = null;
+      if (nfltFilters.stay_type) {
+        stayType = parseInt(nfltFilters.stay_type, 10);
+      } else if (nfltFilters.ht_id) {
+        stayType = parseInt(nfltFilters.ht_id, 10);
+      }
+      
+      // Extract travelling with pets
+      const travellingWithPets = params.get('travelling_with_pets') === '1';
 
       // Try to extract city/destination name
       // This might be in 'ss' (search string) parameter or we'll need to resolve it
@@ -128,6 +215,7 @@ class BookingURLParser {
       if (reviewScore !== null) criteria.reviewScore = reviewScore;
       if (mealPlan !== null) criteria.mealPlan = mealPlan;
       if (stayType !== null) criteria.stayType = stayType;
+      if (travellingWithPets) criteria.travellingWithPets = travellingWithPets;
 
       return {
         success: true,
@@ -192,6 +280,10 @@ class BookingURLParser {
 
     if (criteria.stayType) {
       params.append('nflt', `ht_id%3D${criteria.stayType}`);
+    }
+    
+    if (criteria.travellingWithPets) {
+      params.append('travelling_with_pets', '1');
     }
 
     return `${baseUrl}?${params.toString()}`;
@@ -265,6 +357,11 @@ class BookingURLParser {
         errors.push('Rooms must be a number between 1 and 30');
       }
     }
+    
+    // Validate travellingWithPets is boolean if present
+    if (criteria.travellingWithPets !== undefined && typeof criteria.travellingWithPets !== 'boolean') {
+      errors.push('travellingWithPets must be a boolean value');
+    }
 
     return {
       valid: errors.length === 0,
@@ -295,12 +392,27 @@ class BookingURLParser {
 
     parts.push(`${criteria.rooms} room${criteria.rooms > 1 ? 's' : ''}`);
 
-    if (criteria.minPrice) {
-      parts.push(`min ${criteria.currency || 'EUR'} ${criteria.minPrice}`);
+    if (criteria.minPrice || criteria.maxPrice) {
+      const currency = criteria.currency || 'EUR';
+      if (criteria.minPrice && criteria.maxPrice) {
+        parts.push(`${currency} ${criteria.minPrice}-${criteria.maxPrice}`);
+      } else if (criteria.minPrice) {
+        parts.push(`min ${currency} ${criteria.minPrice}`);
+      } else if (criteria.maxPrice) {
+        parts.push(`max ${currency} ${criteria.maxPrice}`);
+      }
     }
 
     if (criteria.reviewScore) {
       parts.push(`rating ${criteria.reviewScore / 10}+`);
+    }
+    
+    if (criteria.mealPlan) {
+      parts.push(`meal plan included`);
+    }
+    
+    if (criteria.travellingWithPets) {
+      parts.push(`pet friendly`);
     }
 
     return parts.join(', ');

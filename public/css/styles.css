@@ -247,6 +247,35 @@ select.input {
 .toggle-label { font-size: 0.875rem; font-weight: 500; }
 .toggle-desc { font-size: 0.8rem; color: var(--c-text-muted); }
 
+/* ---- Checkbox --------------------------------------------- */
+.checkbox-wrap { 
+  display: flex; align-items: center; gap: 8px; 
+  cursor: pointer; user-select: none; 
+  font-size: 0.875rem;
+}
+.checkbox-wrap input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  width: 18px; height: 18px; flex-shrink: 0;
+  border: 1.5px solid var(--c-border-2); border-radius: 4px;
+  background: var(--c-surface); cursor: pointer;
+  transition: all var(--t);
+  position: relative;
+}
+.checkbox-wrap input[type="checkbox"]:hover { border-color: var(--c-primary); }
+.checkbox-wrap input[type="checkbox"]:checked {
+  background: var(--c-primary); border-color: var(--c-primary);
+}
+.checkbox-wrap input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute; left: 5px; top: 2px;
+  width: 4px; height: 8px;
+  border: solid white; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.checkbox-wrap input[type="checkbox"]:focus { 
+  outline: none; box-shadow: 0 0 0 3px var(--c-primary-ring); 
+}
+
 /* ---- Tag input -------------------------------------------- */
 .tag-input-wrap {
   display: flex; flex-wrap: wrap; gap: 6px;

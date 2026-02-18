@@ -144,7 +144,7 @@
               </div>
               <div class="form-group">
                 <label for="children" class="label">Children</label>
-                <input id="children" type="number" class="input" x-model.number="children" min="0" max="10" />
+                <input id="children" type="number" class="input" x-model.number="children" min="0" max="10" @input="updateChildAges()" />
               </div>
               <div class="form-group">
                 <label for="currency" class="label">Currency</label>
@@ -161,6 +161,20 @@
               </div>
             </div>
 
+            <!-- Child ages (shown when children > 0) -->
+            <div x-show="children > 0" class="form-group">
+              <label class="label">Children's ages</label>
+              <div class="form-row" :class="children <= 3 ? 'form-row--3' : 'form-row--4'" style="gap:10px">
+                <template x-for="(age, index) in childAges" :key="index">
+                  <div class="form-group" style="margin:0">
+                    <label :for="`childAge${index}`" class="label" style="font-size:0.8rem;margin-bottom:4px" x-text="`Child ${index + 1}`"></label>
+                    <input :id="`childAge${index}`" type="number" class="input" x-model.number="childAges[index]" min="0" max="17" placeholder="Age" />
+                  </div>
+                </template>
+              </div>
+              <p class="label-hint" style="margin:4px 0 0;font-size:.78rem;color:var(--c-text-muted)">Enter the age of each child at time of travel</p>
+            </div>
+
             <div class="form-row form-row--2">
               <div class="form-group">
                 <label for="minPrice" class="label">Min price <span class="label-hint">(optional)</span></label>
@@ -169,6 +183,51 @@
               <div class="form-group">
                 <label for="maxPrice" class="label">Max price <span class="label-hint">(optional)</span></label>
                 <input id="maxPrice" type="number" class="input" x-model.number="maxPrice" min="0" placeholder="No limit" />
+              </div>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label for="reviewScore" class="label">Guest review score <span class="label-hint">(optional)</span></label>
+                <select id="reviewScore" class="input" x-model.number="reviewScore">
+                  <option value="">Any rating</option>
+                  <option value="60">6+ Good</option>
+                  <option value="70">7+ Very good</option>
+                  <option value="80">8+ Excellent</option>
+                  <option value="90">9+ Superb</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="stayType" class="label">Property type <span class="label-hint">(optional)</span></label>
+                <select id="stayType" class="input" x-model.number="stayType">
+                  <option value="">All types</option>
+                  <option value="204">Hotels</option>
+                  <option value="220">Apartments</option>
+                  <option value="201">Hostels</option>
+                  <option value="216">Guest houses</option>
+                  <option value="213">Bed and breakfasts</option>
+                  <option value="222">Villas</option>
+                  <option value="206">Resorts</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
+                <label for="mealPlan" class="label">Meal plan <span class="label-hint">(optional)</span></label>
+                <select id="mealPlan" class="input" x-model.number="mealPlan">
+                  <option value="">No preference</option>
+                  <option value="1">Breakfast included</option>
+                  <option value="9">Breakfast & dinner included</option>
+                  <option value="3">All meals included</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="label" style="margin-bottom:10px">Additional options</label>
+                <label class="checkbox-wrap">
+                  <input type="checkbox" x-model="travellingWithPets" />
+                  <span>Pet friendly accommodations</span>
+                </label>
               </div>
             </div>
           </div>
@@ -279,9 +338,14 @@
         checkOut: '',
         adults: 2,
         children: 0,
+        childAges: [],
         currency: 'EUR',
         minPrice: '',
         maxPrice: '',
+        reviewScore: '',
+        mealPlan: '',
+        stayType: '',
+        travellingWithPets: false,
 
         async init() {
           this.user = await window.requireAuth();
@@ -310,9 +374,14 @@
               this.checkOut = c.checkOut || '';
               this.adults = c.adults || 2;
               this.children = c.children || 0;
+              this.childAges = c.childAges || [];
               this.currency = c.currency || 'EUR';
               this.minPrice = c.minPrice || '';
               this.maxPrice = c.maxPrice || '';
+              this.reviewScore = c.reviewScore || '';
+              this.mealPlan = c.mealPlan || '';
+              this.stayType = c.stayType || '';
+              this.travellingWithPets = c.travellingWithPets || false;
             }
             // Choose mode
             this.mode = this.searchUrl ? 'url' : 'manual';
@@ -344,6 +413,18 @@
 
         removeEmail(email) {
           this.emailRecipients = this.emailRecipients.filter(e => e !== email);
+        },
+
+        updateChildAges() {
+          const count = Number(this.children) || 0;
+          // Resize childAges array to match children count
+          if (this.childAges.length > count) {
+            this.childAges = this.childAges.slice(0, count);
+          } else {
+            while (this.childAges.length < count) {
+              this.childAges.push(7); // Default age
+            }
+          }
         },
 
         validate() {
@@ -385,9 +466,14 @@
               checkOut: this.checkOut,
               adults: Number(this.adults),
               children: Number(this.children),
+              ...(this.children > 0 && this.childAges.length > 0 ? { childAges: this.childAges.map(a => Number(a)) } : {}),
               currency: this.currency,
               ...(this.minPrice ? { minPrice: Number(this.minPrice) } : {}),
               ...(this.maxPrice ? { maxPrice: Number(this.maxPrice) } : {}),
+              ...(this.reviewScore ? { reviewScore: Number(this.reviewScore) } : {}),
+              ...(this.mealPlan ? { mealPlan: Number(this.mealPlan) } : {}),
+              ...(this.stayType ? { stayType: Number(this.stayType) } : {}),
+              ...(this.travellingWithPets ? { travellingWithPets: this.travellingWithPets } : {}),
             };
           }
 
