@@ -124,6 +124,26 @@
 
             <div class="form-row form-row--2">
               <div class="form-group">
+                <label for="destId" class="label">Destination ID <span class="label-hint">(from Booking.com URL)</span></label>
+                <input id="destId" type="text" class="input" x-model="destId" placeholder="e.g. 2647" autocomplete="off" />
+                <p class="label-hint" style="margin:4px 0 0;font-size:.75rem;color:var(--c-text-muted)">
+                  Optional: Find this in the Booking.com URL as dest_id parameter
+                </p>
+              </div>
+              <div class="form-group">
+                <label for="destType" class="label">Type <span class="label-hint">(optional)</span></label>
+                <select id="destType" class="input" x-model="destType">
+                  <option value="region">Region</option>
+                  <option value="city">City</option>
+                  <option value="district">District</option>
+                  <option value="hotel">Hotel</option>
+                  <option value="landmark">Landmark</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-row form-row--2">
+              <div class="form-group">
                 <label for="checkIn" class="label">Check-in <span aria-hidden="true">*</span></label>
                 <input id="checkIn" type="date" class="input" :class="errors.checkIn && 'input--error'"
                        x-model="checkIn" :min="today" />
@@ -334,6 +354,8 @@
 
         // Manual criteria
         destination: '',
+        destId: '',
+        destType: 'region',
         checkIn: '',
         checkOut: '',
         adults: 2,
@@ -370,6 +392,8 @@
             if (s.criteria) {
               const c = s.criteria;
               this.destination = c.cityName || c.destination || '';
+              this.destId = c.destination || '';
+              this.destType = c.destinationType || 'region';
               this.checkIn = c.checkIn || '';
               this.checkOut = c.checkOut || '';
               this.adults = c.adults || 2;
@@ -462,10 +486,13 @@
           } else {
             payload.criteria = {
               cityName: this.destination.trim(),
+              ...(this.destId ? { destination: this.destId.trim() } : {}),
+              ...(this.destType ? { destinationType: this.destType } : {}),
               checkIn: this.checkIn,
               checkOut: this.checkOut,
               adults: Number(this.adults),
               children: Number(this.children),
+              rooms: 1,
               ...(this.children > 0 && this.childAges.length > 0 ? { childAges: this.childAges.map(a => Number(a)) } : {}),
               currency: this.currency,
               ...(this.minPrice ? { minPrice: Number(this.minPrice) } : {}),
