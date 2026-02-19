@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/assets/img/favicon-96x96.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-icon-180x180.png" />
+  <link rel="manifest" href="/assets/img/manifest.json" />
+  <link rel="msapplication-config" href="/assets/img/browserconfig.xml" />
+  <meta name="msapplication-TileImage" content="/assets/img/ms-icon-144x144.png" />
+</head>
+<body class="page">
+  <nav class="nav">
+    <div class="nav__brand">
+      <a href="/" aria-label="VacationMonitor home">
+        <img src="/assets/img/apple-icon-180x180.png" alt="VacationMonitor" style="height: 32px; width: 32px;" />
+        VacationMonitor
+      </a>
+    </div>
+    <div class="nav__actions">
+      <a href="/" class="btn btn--ghost btn--sm">Back</a>
+    </div>
+  </nav>
+
+  <main class="container" style="padding: 40px 24px; max-width: 900px;">
+    <h1 style="margin-bottom: 8px;">Privacy Policy</h1>
+    <p class="text-muted" style="margin-bottom: 40px;">Last updated: February 19, 2026</p>
+
+    <!-- Introduction -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">Introduction</h2>
+      <p>VacationMonitor ("Service", "we", "us", or "our") operates as a web-based price monitoring platform. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our Service.</p>
+      <p>We are committed to protecting your privacy. If you have additional questions or require more information about our Privacy Policy, please do not hesitate to contact us.</p>
+    </section>
+
+    <!-- Personal Information Collected -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">1. Information We Collect</h2>
+      
+      <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Google Account Information</h3>
+      <p>When you sign in using Google OAuth, we collect and store:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li><strong>Email address</strong> — used for account identification and communication</li>
+        <li><strong>Profile name</strong> — displayed in your VacationMonitor profile</li>
+        <li><strong>Profile picture</strong> — loaded from Google's servers; we store only the URL reference</li>
+      </ul>
+      <p style="margin-top: 12px; font-size: 0.9rem; color: #666;"><em>We never store your Google password or authentication tokens beyond the OAuth session.</em></p>
+
+      <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Search Data</h3>
+      <p>When you add a vacation search to monitor, we collect and store:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li><strong>Booking.com URLs</strong> — parsed to extract destination, traveler details, dates, and search criteria</li>
+        <li><strong>Stop date for monitoring</strong> — when you want us to stop tracking this search</li>
+        <li><strong>Created/updated timestamps</strong> — for audit and activity tracking</li>
+      </ul>
+
+      <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Price Data</h3>
+      <p>As we monitor hotel prices over time, we collect and store:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li><strong>Historical price points</strong> — hotel names, room types, rates, and currency</li>
+        <li><strong>Price timestamps</strong> — when each price was recorded</li>
+        <li><strong>Aggregated analytics</strong> — price trends, statistical summaries, and indexed data for search</li>
+      </ul>
+
+      <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Conversation Data</h3>
+      <p>If you use our AI-powered insights feature, we store:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li><strong>Your messages</strong> — questions and requests about price trends and booking recommendations</li>
+        <li><strong>AI responses</strong> — summaries, insights, and analysis generated for you</li>
+        <li><strong>Conversation context</strong> — linked to your searches and price history for relevance</li>
+      </ul>
+
+      <h3 style="font-size: 1rem; margin-top: 20px; margin-bottom: 12px; font-weight: 600;">Usage and Log Data</h3>
+      <p>We automatically collect certain technical information:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li>IP address and browser fingerprint (for security and abuse prevention)</li>
+        <li>Pages viewed and actions taken in the app (clicks, exports, preference changes)</li>
+        <li>Session timestamps and duration</li>
+        <li>Error logs and performance metrics</li>
+      </ul>
+    </section>
+
+    <!-- Data Storage and Security -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">2. How We Store Your Data</h2>
+      <p><strong>Database:</strong> All personal data, searches, and prices are stored in Microsoft Azure Cosmos DB, a cloud-hosted NoSQL database. Cosmos DB is encrypted at rest and in transit using industry-standard protocols.</p>
+      <p style="margin-top: 12px;"><strong>Data Processing:</strong> The Schedule runs within the Web API process and polls your searches. When a search is due for monitoring, we enqueue a job to Azure Service Bus, which is then picked up by a separate Worker service that:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li>Scrapes price data from Booking.com or other sources</li>
+        <li>Processes and aggregates the results</li>
+        <li>Stores updated prices back to Cosmos DB</li>
+      </ul>
+      <p style="margin-top: 12px;"><strong>No third-party analytics:</strong> We do not share raw search or price data with third parties. We use only internal logging for debugging and performance optimization.</p>
+    </section>
+
+    <!-- Third-Party Services -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">3. Third-Party Services</h2>
+      <p><strong>Google OAuth:</strong> We use Google's OAuth 2.0 for authentication. When you sign in with Google, you are subject to Google's Privacy Policy. We do not receive or store your Google password.</p>
+      <p style="margin-top: 12px;"><strong>Microsoft Azure:</strong> Our infrastructure (Cosmos DB, Service Bus, hosting) is provided by Microsoft Azure. Your data is processed and stored on Microsoft's servers, subject to their privacy and security terms.</p>
+      <p style="margin-top: 12px;"><strong>AI Services:</strong> Insights and analysis features may integrate with third-party AI services. Any data sent to AI providers is anonymized and aggregated; raw personal data is not shared.</p>
+    </section>
+
+    <!-- How We Use Your Data -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">4. How We Use Your Data</h2>
+      <p>We use the information we collect to:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li>Authenticate your account and maintain your sessions</li>
+        <li>Store and retrieve your vacation searches and price history</li>
+        <li>Monitor hotel prices on your behalf and schedule monitoring jobs</li>
+        <li>Generate price trend reports and AI-powered insights</li>
+        <li>Operate and improve the Service (debugging, performance monitoring)</li>
+        <li>Detect, prevent, and address abuse, fraud, and security issues</li>
+        <li>Comply with legal obligations and enforce our Terms of Service</li>
+      </ul>
+    </section>
+
+    <!-- Data Retention -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">5. Data Retention</h2>
+      <p><strong>Active Accounts:</strong> While your account is active, we retain all personal data, searches, and price history for the lifetime of the account.</p>
+      <p style="margin-top: 12px;"><strong>Deleted Accounts:</strong> If you delete your account, we will remove your personal data, searches, and conversations within 30 days. Historical price data may be retained in aggregated, anonymized form for analytics purposes.</p>
+      <p style="margin-top: 12px;"><strong>Logs:</strong> Technical logs and usage data are retained for up to 90 days, then deleted.</p>
+    </section>
+
+    <!-- User Rights and GDPR Compliance -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">6. Your Rights</h2>
+      <p>Depending on your location, you may have the following rights regarding your personal data:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li><strong>Right to Access:</strong> Request a copy of your personal data</li>
+        <li><strong>Right to Correction:</strong> Request we correct inaccurate data</li>
+        <li><strong>Right to Deletion:</strong> Request we delete your account and associated data (via Settings page)</li>
+        <li><strong>Right to Portability:</strong> Request your data in a portable format (CSV export available)</li>
+        <li><strong>Right to Opt-Out:</strong> Disable price monitoring or delete specific searches</li>
+      </ul>
+      <p style="margin-top: 12px;">To exercise these rights, please contact us at <strong>privacy@vacationmonitor.dev</strong>. We will respond to verified requests within 30 days.</p>
+    </section>
+
+    <!-- Cookies and Tracking -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">7. Cookies and Tracking</h2>
+      <p>We use secure session cookies to maintain your authentication state. These cookies are:</p>
+      <ul style="margin: 12px 0 0 24px; line-height: 1.8;">
+        <li>HttpOnly (not accessible via JavaScript, preventing XSS attacks)</li>
+        <li>Secure (only transmitted over HTTPS in production)</li>
+        <li>SameSite (mitigating CSRF attacks)</li>
+      </ul>
+      <p style="margin-top: 12px;">We do not use third-party tracking pixels, analytics cookies, or advertisement tracking.</p>
+    </section>
+
+    <!-- Changes to Privacy Policy -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">8. Changes to This Privacy Policy</h2>
+      <p>We may update this Privacy Policy from time to time. We will notify you of material changes via email or by posting a prominent notice on our website. Your continued use of the Service following such notice constitutes your acceptance of the updated Privacy Policy.</p>
+    </section>
+
+    <!-- Contact Information -->
+    <section style="margin-bottom: 48px;">
+      <h2 style="font-size: 1.25rem; margin-bottom: 16px;">9. Contact Us</h2>
+      <p>If you have questions about this Privacy Policy or your personal data, please contact us at:</p>
+      <div style="margin-top: 16px; padding: 16px; background: rgba(0,0,0,0.02); border-radius: 8px; font-family: monospace; font-size: 0.9rem;">
+        Email: privacy@vacationmonitor.dev<br>
+        Support: https://vacationmonitor.dev/support
+      </div>
+    </section>
+
+    <hr style="margin: 60px 0; border: none; border-top: 1px solid #e5e7eb;">
+    <p class="text-muted" style="font-size: 0.85rem;">
+      This Privacy Policy is provided for informational purposes and does not constitute legal advice. Please consult with a privacy attorney regarding your specific obligations.
+    </p>
+  </main>
+</body>
+</html>

@@ -27,11 +27,13 @@ const logger = require('./logger.cjs');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const homePageTemplate    = readFileSync(join(__dirname, 'views', 'home.html'), 'utf8');
-const dashboardTemplate   = readFileSync(join(__dirname, 'views', 'dashboard.html'), 'utf8');
-const searchTemplate      = readFileSync(join(__dirname, 'views', 'search.html'), 'utf8');
-const newSearchTemplate   = readFileSync(join(__dirname, 'views', 'new-search.html'), 'utf8');
-const settingsTemplate    = readFileSync(join(__dirname, 'views', 'settings.html'), 'utf8');
+const homePageTemplate      = readFileSync(join(__dirname, 'views', 'home.html'), 'utf8');
+const dashboardTemplate     = readFileSync(join(__dirname, 'views', 'dashboard.html'), 'utf8');
+const searchTemplate        = readFileSync(join(__dirname, 'views', 'search.html'), 'utf8');
+const newSearchTemplate     = readFileSync(join(__dirname, 'views', 'new-search.html'), 'utf8');
+const settingsTemplate      = readFileSync(join(__dirname, 'views', 'settings.html'), 'utf8');
+const privacyPolicyTemplate = readFileSync(join(__dirname, 'views', 'privacy-policy.html'), 'utf8');
+const termsOfServiceTemplate = readFileSync(join(__dirname, 'views', 'terms-of-service.html'), 'utf8');
 
 /**
  * Build and configure Fastify application
@@ -165,6 +167,14 @@ export async function buildApp(opts = {}) {
 
     app.get('/settings', async (_request, reply) => {
       return reply.type('text/html; charset=utf-8').send(settingsTemplate);
+    });
+
+    app.get('/privacy', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(privacyPolicyTemplate);
+    });
+
+    app.get('/terms', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(termsOfServiceTemplate);
     });
 
     app.get('/health', async (request, reply) => {
