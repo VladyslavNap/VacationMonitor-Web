@@ -106,6 +106,42 @@ export default async function priceRoutes(fastify, options) {
   });
 
   /**
+   * GET /api/searches/:id/prices/outdated
+   * Get outdated hotels (hotels not in latest extraction)
+   */
+  fastify.get('/api/searches/:id/prices/outdated', {
+    preHandler: authenticate
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params;
+
+      // Verify search exists and belongs to user
+      const search = await cosmosDBService.getSearch(id, request.user.id);
+      if (!search) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Search not found'
+        });
+      }
+
+      const prices = await cosmosDBService.getOutdatedHotels(id);
+
+      return reply.send({
+        searchId: id,
+        count: prices.length,
+        prices: prices
+      });
+    } catch (error) {
+      logger.error('Failed to get outdated hotels', { 
+        searchId: request.params.id, 
+        userId: request.user.id, 
+        error: error.message 
+      });
+      throw error;
+    }
+  });
+
+  /**
    * GET /api/searches/:id/insights
    * Get latest AI insights for a search
    */

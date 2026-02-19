@@ -432,6 +432,62 @@ class CosmosDBService {
     }
   }
 
+  /**
+   * Get outdated hotels - hotels that appeared in historical prices but NOT in latest extraction
+   * Returns all historical prices for these outdated hotels, grouped by hotel
+   * @param {string} searchId
+   */
+  async getOutdatedHotels(searchId) {
+    try {
+      // Step 1: Get the latest extraction timestamp
+      const latestQuery = {
+        query: `SELECT TOP 1 c.extractedAt as timestamp FROM c 
+                WHERE c.searchId = @searchId 
+                ORDER BY c.extractedAt DESC`,
+        parameters: [{ name: '@searchId', value: searchId }]
+      };
+
+      const { resources: latestRes } = await this.containers.prices.items.query(latestQuery).fetchAll();
+      
+      if (latestRes.length === 0) {
+        return [];
+      }
+
+      const latestTimestamp = latestRes[0].timestamp;
+
+      // Step 2: Get all unique hotel names from the latest extraction
+      const latestHotelsQuery = {
+        query: `SELECT DISTINCT c.hotelName FROM c 
+                WHERE c.searchId = @searchId AND c.extractedAt = @timestamp`,
+        parameters: [
+          { name: '@searchId', value: searchId },
+          { name: '@timestamp', value: latestTimestamp }
+        ]
+      };
+
+      const { resources: latestHotels } = await this.containers.prices.items.query(latestHotelsQuery).fetchAll();
+      const latestHotelNames = new Set(latestHotels.map(h => h.hotelName));
+
+      // Step 3: Get all prices for hotels NOT in the latest extraction
+      const outdatedQuery = {
+        query: `SELECT * FROM c 
+                WHERE c.searchId = @searchId 
+                ORDER BY c.extractedAt DESC`,
+        parameters: [{ name: '@searchId', value: searchId }]
+      };
+
+      const { resources: allPrices } = await this.containers.prices.items.query(outdatedQuery).fetchAll();
+      
+      // Filter to only include hotels not in latest extraction
+      const outdatedPrices = allPrices.filter(p => !latestHotelNames.has(p.hotelName));
+
+      return outdatedPrices;
+    } catch (error) {
+      logger.error('Failed to get outdated hotels', { searchId, error: error.message });
+      throw error;
+    }
+  }
+
   // ==================== CONVERSATIONS OPERATIONS ====================
 
   /**
