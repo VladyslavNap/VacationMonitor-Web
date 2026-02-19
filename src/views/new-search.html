@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>New Search — VacationMonitor</title>
   <link rel="stylesheet" href="/assets/css/styles.css" />
+  <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/assets/img/favicon-96x96.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-icon-180x180.png" />
+  <link rel="manifest" href="/assets/img/manifest.json" />
+  <link rel="msapplication-config" href="/assets/img/browserconfig.xml" />
+  <meta name="msapplication-TileImage" content="/assets/img/ms-icon-144x144.png" />
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
 </head>
 <body x-data="searchForm()" x-cloak>
@@ -13,7 +20,7 @@
   <nav class="nav" role="navigation" aria-label="Main navigation">
     <div class="nav__inner">
       <a href="/dashboard" class="nav__brand">
-        <div class="nav__brand-icon" aria-hidden="true">✈</div>
+        <img src="/assets/img/android-icon-48x48.png" alt="VacationMonitor" class="nav__brand-icon-img" />
         VacationMonitor
       </a>
       <div class="nav__actions">

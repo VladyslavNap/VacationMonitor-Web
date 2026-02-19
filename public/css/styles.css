@@ -85,6 +85,10 @@ ul, ol { list-style: none; }
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 1rem; flex-shrink: 0;
 }
+.nav__brand-icon-img {
+  width: 32px; height: 32px; flex-shrink: 0;
+  object-fit: contain; border-radius: 8px;
+}
 .nav__actions { display: flex; align-items: center; gap: 6px; }
 .nav__user-btn {
   display: flex; align-items: center; gap: 8px;
@@ -482,6 +486,10 @@ tbody tr:hover { background: var(--c-bg); }
   display: flex; align-items: center; justify-content: center;
   font-size: 2.2rem; margin: 0 auto 28px;
   box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.landing__logo-img {
+  width: 80px; height: 80px;
+  object-fit: contain; border-radius: 22px;
 }
 .landing__title {
   font-size: clamp(2.2rem, 6vw, 3.6rem); font-weight: 900; color: #fff;
