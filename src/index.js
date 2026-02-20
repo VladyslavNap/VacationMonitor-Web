@@ -38,12 +38,57 @@ async function startWebServer() {
   const schedulerService = (await import('./services/scheduler.service.js')).default;
 
   // Start web server
-  await startServer();
+  const app = await startServer();
 
   // Also start scheduler in same process
-  await schedulerService.start();
+  try {
+    await schedulerService.start();
+  } catch (error) {
+    logger.warn('Scheduler failed to start', { error: error.message });
+    logger.info('Web server is running but scheduler is offline - monitor the health endpoint');
+  }
 
   logger.info('✅ Web server and scheduler started');
+
+  return { app, schedulerService };
+}
+
+let schedulerService = null;
+let gracefulShutdownInProgress = false;
+
+/**
+ * Handle graceful shutdown
+ */
+async function handleShutdown(signal) {
+  if (gracefulShutdownInProgress) {
+    logger.warn(`${signal} received again, forcing exit`);
+    process.exit(1);
+  }
+
+  gracefulShutdownInProgress = true;
+  logger.info(`${signal} received, initiating graceful shutdown...`);
+
+  // Set a timeout to force exit if graceful shutdown takes too long
+  const shutdownTimeout = setTimeout(() => {
+    logger.error('Graceful shutdown timeout exceeded (10s), forcing exit');
+    process.exit(1);
+  }, 10000);
+
+  try {
+    // Stop scheduler first
+    if (schedulerService) {
+      logger.info('Stopping scheduler...');
+      await schedulerService.stop();
+    }
+
+    logger.info('✅ Graceful shutdown completed');
+    clearTimeout(shutdownTimeout);
+    process.exit(0);
+  } catch (error) {
+    logger.error('Error during graceful shutdown', { error: error.message });
+    clearTimeout(shutdownTimeout);
+    process.exit(1);
+  }
 }
 
 /**
@@ -56,23 +101,17 @@ async function main() {
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info('='.repeat(60));
 
-    await startWebServer();
+    const services = await startWebServer();
+    schedulerService = services.schedulerService;
   } catch (error) {
     logger.error('Application failed to start', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
+// Graceful shutdown handlers
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 // Run only if this is the main module
 if (process.argv[1] === __filename) {

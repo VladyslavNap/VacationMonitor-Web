@@ -624,6 +624,14 @@ class CosmosDBService {
       throw error;
     }
   }
+
+  /**
+   * Get the jobs container reference for external services
+   * Used by distributed lock service for scheduler coordination
+   */
+  getJobsContainer() {
+    return this.containers.jobs;
+  }
 }
 
 // Singleton instance

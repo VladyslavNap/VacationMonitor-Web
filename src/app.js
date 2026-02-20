@@ -12,6 +12,7 @@ import { createRequire } from 'module';
 
 // Import services
 import cosmosDBService from './services/cosmos-db.service.js';
+import schedulerService from './services/scheduler.service.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/error-handler.middleware.js';
@@ -36,9 +37,36 @@ const privacyPolicyTemplate = readFileSync(join(__dirname, 'views', 'privacy-pol
 const termsOfServiceTemplate = readFileSync(join(__dirname, 'views', 'terms-of-service.html'), 'utf8');
 
 /**
+ * Validate required environment variables
+ */
+function validateEnvironmentVariables() {
+  const requiredVars = [
+    'COSMOS_ENDPOINT',
+    'COSMOS_KEY',
+    'COSMOS_DATABASE_NAME',
+    'AZURE_SERVICE_BUS_CONNECTION_STRING',
+    'GOOGLE_OAUTH_CLIENT_ID',
+    'GOOGLE_OAUTH_CLIENT_SECRET'
+  ];
+
+  const missingVars = requiredVars.filter(varName => !process.env[varName]);
+
+  if (missingVars.length > 0) {
+    const errorMessage = `Missing required environment variables: ${missingVars.join(', ')}`;
+    logger.error('❌ Environment validation failed', { missingVariables: missingVars });
+    throw new Error(errorMessage);
+  }
+
+  logger.info('✅ All required environment variables present');
+}
+
+/**
  * Build and configure Fastify application
  */
 export async function buildApp(opts = {}) {
+  // Validate environment variables on app build
+  validateEnvironmentVariables();
+
   const app = Fastify({
     logger: false, // Use Winston logger instead
     trustProxy: true,
@@ -178,11 +206,20 @@ export async function buildApp(opts = {}) {
     });
 
     app.get('/health', async (request, reply) => {
+      const schedulerStatus = schedulerService.getStatus();
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        scheduler: {
+          isRunning: schedulerStatus.isRunning,
+          lastTickTime: schedulerStatus.lastTickTime,
+          pollIntervalMinutes: schedulerStatus.pollIntervalMinutes,
+          consecutiveErrors: schedulerStatus.consecutiveErrors,
+          maxConsecutiveErrors: schedulerStatus.maxConsecutiveErrors,
+          isDisabled: schedulerStatus.isDisabled
+        }
       };
     });
 
@@ -237,14 +274,3 @@ export async function startServer() {
     process.exit(1);
   }
 }
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', async () => {
-  logger.info('SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
