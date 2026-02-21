@@ -7,6 +7,40 @@ const require = createRequire(import.meta.url);
 const logger = require('../logger.cjs');
 
 /**
+ * Apply hotel-type filters from search criteria to price results
+ * 
+ * Note: Ideally, hotel-type filtering should be applied by the Worker during scraping
+ * to avoid fetching unnecessary data. This function provides client-side filtering
+ * as a fallback or for compatibility.
+ * 
+ * Currently, price documents don't store hotel-type information, so this function
+ * serves as a placeholder for future enhancement when price documents include
+ * hotel property-type metadata from Booking.com.
+ * 
+ * @param {Array} prices - Array of price documents
+ * @param {Object} hotelTypeFilters - Hotel-type filters from search.criteria.hotelTypeFilters
+ * @returns {Array} Filtered prices (currently returns all prices as-is)
+ */
+function applyHotelTypeFilters(prices, hotelTypeFilters) {
+  if (!hotelTypeFilters || Object.keys(hotelTypeFilters).length === 0) {
+    return prices;
+  }
+  
+  // TODO: Once price documents include hotel-type metadata (e.g., propertyType, amenities)
+  // from Booking.com scraping, implement filtering logic here.
+  // Example:
+  // - If ht_beach=1, filter to only hotels with beachfront amenity
+  // - If ht_city=1, filter to only hotels in city centers
+  // - If ht_resort=1, filter to resort-type properties
+  
+  logger.debug('Hotel-type filters available but not applied at retrieval', {
+    filters: Object.keys(hotelTypeFilters)
+  });
+  
+  return prices;
+}
+
+/**
  * Price routes
  */
 export default async function priceRoutes(fastify, options) {
@@ -52,9 +86,12 @@ export default async function priceRoutes(fastify, options) {
         continuationToken
       });
 
+      // Apply hotel-type filters if present in search criteria
+      const filteredPrices = applyHotelTypeFilters(result.prices, search.criteria?.hotelTypeFilters);
+
       return reply.send({
         searchId: id,
-        prices: result.prices,
+        prices: filteredPrices,
         continuationToken: result.continuationToken,
         hasMore: !!result.continuationToken
       });
@@ -87,7 +124,10 @@ export default async function priceRoutes(fastify, options) {
         });
       }
 
-      const prices = await cosmosDBService.getLatestPrices(id);
+      let prices = await cosmosDBService.getLatestPrices(id);
+      
+      // Apply hotel-type filters if present in search criteria
+      prices = applyHotelTypeFilters(prices, search.criteria?.hotelTypeFilters);
 
       return reply.send({
         searchId: id,
@@ -124,7 +164,10 @@ export default async function priceRoutes(fastify, options) {
         });
       }
 
-      const prices = await cosmosDBService.getOutdatedHotels(id);
+      let prices = await cosmosDBService.getOutdatedHotels(id);
+      
+      // Apply hotel-type filters if present in search criteria
+      prices = applyHotelTypeFilters(prices, search.criteria?.hotelTypeFilters);
 
       return reply.send({
         searchId: id,
@@ -212,9 +255,12 @@ export default async function priceRoutes(fastify, options) {
       }
 
       // Get all prices for this search
-      const result = await cosmosDBService.getPricesBySearch(id, {
+      let result = await cosmosDBService.getPricesBySearch(id, {
         limit: 10000 // Max for export
       });
+
+      // Apply hotel-type filters if present in search criteria
+      result.prices = applyHotelTypeFilters(result.prices, search.criteria?.hotelTypeFilters);
 
       if (result.prices.length === 0) {
         return reply.code(404).send({

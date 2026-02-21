@@ -108,8 +108,23 @@ class BookingURLParser {
       // Extract child ages (can be multiple)
       const childAges = [];
       if (children > 0) {
-        for (let i = 0; i < children; i++) {
-          const age = params.get(`age`) || params.get(`child_age_${i}`) || params.get(`age_${i}`);
+        // Try to get all 'age' parameters (getAll handles repeated params)
+        let ages = params.getAll('age');
+        // If no 'age' param, try 'req_age' (alternative parameter name from Booking.com)
+        if (ages.length === 0) {
+          ages = params.getAll('req_age');
+        }
+        // Also try indexed age parameters
+        if (ages.length === 0) {
+          for (let i = 0; i < children; i++) {
+            const age = params.get(`child_age_${i}`) || params.get(`age_${i}`);
+            if (age) {
+              ages.push(age);
+            }
+          }
+        }
+        // Convert all ages to integers
+        for (const age of ages) {
           if (age) {
             childAges.push(parseInt(age, 10));
           }
@@ -185,6 +200,15 @@ class BookingURLParser {
         stayType = parseInt(nfltFilters.ht_id, 10);
       }
       
+      // Extract all hotel-type filters (ht_*) from nflt
+      // These include property type filters like ht_beach, ht_city, ht_resort, ht_villa, etc.
+      const hotelTypeFilters = {};
+      for (const [key, value] of Object.entries(nfltFilters)) {
+        if (key.startsWith('ht_')) {
+          hotelTypeFilters[key] = value;
+        }
+      }
+      
       // Extract travelling with pets
       const travellingWithPets = params.get('travelling_with_pets') === '1';
 
@@ -215,6 +239,7 @@ class BookingURLParser {
       if (reviewScore !== null) criteria.reviewScore = reviewScore;
       if (mealPlan !== null) criteria.mealPlan = mealPlan;
       if (stayType !== null) criteria.stayType = stayType;
+      if (Object.keys(hotelTypeFilters).length > 0) criteria.hotelTypeFilters = hotelTypeFilters;
       if (travellingWithPets) criteria.travellingWithPets = travellingWithPets;
 
       return {
@@ -278,8 +303,43 @@ class BookingURLParser {
       params.append('meal_plan', criteria.mealPlan.toString());
     }
 
+    // Build nflt parameter from available filters
+    const nfltParts = [];
+    
     if (criteria.stayType) {
-      params.append('nflt', `ht_id%3D${criteria.stayType}`);
+      nfltParts.push(`ht_id=${criteria.stayType}`);
+    }
+    
+    // Add all hotel-type filters
+    if (criteria.hotelTypeFilters) {
+      for (const [key, value] of Object.entries(criteria.hotelTypeFilters)) {
+        nfltParts.push(`${key}=${value}`);
+      }
+    }
+    
+    // Add other nflt filters if they were stored in criteria
+    if (criteria.reviewScore) {
+      nfltParts.push(`review_score=${criteria.reviewScore}`);
+    }
+    
+    if (criteria.mealPlan) {
+      nfltParts.push(`mealplan=${criteria.mealPlan}`);
+    }
+    
+    // Add price filter if in nflt format
+    if (criteria.minPrice || criteria.maxPrice) {
+      const currency = criteria.currency || 'EUR';
+      if (criteria.minPrice && criteria.maxPrice) {
+        nfltParts.push(`price=${currency}-${criteria.minPrice}-${criteria.maxPrice}-1`);
+      } else if (criteria.minPrice && !criteria.maxPrice) {
+        nfltParts.push(`price=${currency}-max-${criteria.minPrice}-1`);
+      } else if (!criteria.minPrice && criteria.maxPrice) {
+        nfltParts.push(`price=${currency}-min-${criteria.maxPrice}-1`);
+      }
+    }
+    
+    if (nfltParts.length > 0) {
+      params.append('nflt', nfltParts.join(';'));
     }
     
     if (criteria.travellingWithPets) {
