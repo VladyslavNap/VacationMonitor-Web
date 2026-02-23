@@ -33,6 +33,7 @@
     "csv-parse": "^6.1.0",
     "csv-writer": "^1.6.0",
     "dotenv": "^17.3.1",
+    "exceljs": "^4.4.0",
     "fastify": "^5.7.4",
     "nanoid": "^5.0.4",
     "winston": "^3.11.0"

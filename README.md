@@ -11,6 +11,7 @@ Fastify web server providing a full-stack hotel price monitoring application. In
 │  Web UI (Alpine.js + Chart.js, served by Fastify)            │
 │  ├── Landing page          GET /                             │
 │  ├── Dashboard             GET /dashboard                    │
+│  ├── All Prices            GET /all-prices                   │
 │  ├── Search detail         GET /search?id=                   │
 │  ├── Create / Edit search  GET /new-search                   │
 │  └── Settings              GET /settings                     │
@@ -24,8 +25,10 @@ Fastify web server providing a full-stack hotel price monitoring application. In
 │  ├── Google OAuth (/auth/google)                             │
 │  ├── User management (/api/users)                            │
 │  ├── Search CRUD (/api/searches)                             │
+│  ├── All-prices summary (/api/searches/summary/all-prices)   │
 │  ├── Price history (/api/searches/:id/prices)                │
-│  └── CSV export (/api/searches/:id/export)                   │
+│  ├── CSV export (/api/searches/:id/export)                   │
+│  └── Excel export (/api/searches/export-all-latest-prices)   │
 │                                                              │
 │  Scheduler (polls DB every 5 min)                            │
 │  └── Enqueues jobs → Azure Service Bus ──────────────────────┼──► VacationMonitor-Worker
@@ -77,6 +80,7 @@ npm start
 |------|-------|-------------|
 | Landing | `GET /` | Sign-in hero (redirects to `/dashboard` if already authenticated) |
 | Dashboard | `GET /dashboard` | All searches overview — run, pause, edit, delete |
+| All Prices | `GET /all-prices` | Aggregated latest prices from all active searches with filtering, sorting, and Excel export |
 | Search detail | `GET /search?id=` | Price trend chart, latest prices table, AI insights |
 | Create / Edit | `GET /new-search[?id=]` | URL-paste or manual criteria form; `?id=` enables edit mode |
 | Settings | `GET /settings` | Profile, email notifications toggle, account deletion |
@@ -97,6 +101,7 @@ The UI is powered by **Alpine.js** and **Chart.js** (both loaded from CDN). Stat
 | `DELETE` | `/api/users/me` | Delete account |
 | `POST` | `/api/searches` | Create a search (from URL or criteria) |
 | `GET` | `/api/searches` | List user's searches |
+| `GET` | `/api/searches/summary/all-prices` | Get latest prices from all active searches |
 | `GET` | `/api/searches/:id` | Get search details + latest prices |
 | `PATCH` | `/api/searches/:id` | Update search |
 | `DELETE` | `/api/searches/:id` | Delete search |
@@ -105,6 +110,7 @@ The UI is powered by **Alpine.js** and **Chart.js** (both loaded from CDN). Stat
 | `GET` | `/api/searches/:id/prices/latest` | Latest prices |
 | `GET` | `/api/searches/:id/insights` | AI insights |
 | `GET` | `/api/searches/:id/export` | Download CSV |
+| `POST` | `/api/searches/export-all-latest-prices` | Export latest prices from all active searches as Excel (.xlsx) |
 
 ## Environment Variables
 

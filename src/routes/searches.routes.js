@@ -301,9 +301,13 @@ export default async function searchRoutes(fastify, options) {
         });
       }
 
-      // Trigger manual run via scheduler service
-      const schedulerService = (await import('../services/scheduler.service.js')).default;
-      const messageId = await schedulerService.triggerManualRun(id, request.user.id);
+      // Trigger manual run by enqueuing job directly
+      const jobQueueService = (await import('../services/job-queue.service.js')).default;
+      const messageId = await jobQueueService.enqueueJob({
+        searchId: id,
+        userId: request.user.id,
+        scheduleType: 'manual'
+      });
 
       logger.info('Manual search run triggered', { 
         searchId: id, 
@@ -322,6 +326,104 @@ export default async function searchRoutes(fastify, options) {
         searchId: request.params.id, 
         userId: request.user.id, 
         error: error.message 
+      });
+      throw error;
+    }
+  });
+
+  /**
+   * GET /api/searches/summary/all-prices
+   * Get latest prices for all active searches (for the all-prices page)
+   */
+  fastify.get('/api/searches/summary/all-prices', {
+    preHandler: authenticate
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id;
+
+      // Get all active searches for user
+      const { searches: activeSearches } = await cosmosDBService.getSearchesByUser(userId, {
+        isActive: true,
+        limit: 100
+      });
+
+      if (activeSearches.length === 0) {
+        return reply.send({
+          searches: [],
+          totalSearches: 0,
+          totalPrices: 0
+        });
+      }
+
+      // Fetch latest prices for each search
+      const searchesWithPrices = await Promise.all(
+        activeSearches.map(async (search) => {
+          try {
+            const prices = await cosmosDBService.getLatestPrices(search.id);
+            const latestExtractedAt = prices.length > 0 ? prices[0].extractedAt : null;
+
+            // Deduplicate prices by hotelName (keep first occurrence)
+            const dedupedPrices = [];
+            const seenHotels = new Set();
+            for (const price of prices) {
+              if (!seenHotels.has(price.hotelName)) {
+                seenHotels.add(price.hotelName);
+                dedupedPrices.push(price);
+              }
+            }
+
+            return {
+              id: search.id,
+              searchName: search.searchName,
+              destination: search.criteria?.cityName || 'Unknown',
+              checkIn: search.criteria?.checkIn || null,
+              checkOut: search.criteria?.checkOut || null,
+              reviewScore: search.criteria?.reviewScore || null,
+              lastRunAt: search.lastRunAt,
+              extractedAt: latestExtractedAt,
+              priceCount: dedupedPrices.length,
+              prices: dedupedPrices
+            };
+          } catch (error) {
+            logger.warn('Failed to fetch prices for search', {
+              searchId: search.id,
+              error: error.message
+            });
+            // Return search with empty prices on error
+            return {
+              id: search.id,
+              searchName: search.searchName,
+              destination: search.criteria?.cityName || 'Unknown',
+              checkIn: search.criteria?.checkIn || null,
+              checkOut: search.criteria?.checkOut || null,
+              reviewScore: search.criteria?.reviewScore || null,
+              lastRunAt: search.lastRunAt,
+              extractedAt: null,
+              priceCount: 0,
+              prices: []
+            };
+          }
+        })
+      );
+
+      // Calculate totals
+      const totalPrices = searchesWithPrices.reduce((sum, s) => sum + s.priceCount, 0);
+
+      logger.info('All-prices summary fetched', {
+        userId,
+        activeSearchCount: activeSearches.length,
+        totalPrices
+      });
+
+      return reply.send({
+        searches: searchesWithPrices,
+        totalSearches: activeSearches.length,
+        totalPrices
+      });
+    } catch (error) {
+      logger.error('Failed to get all-prices summary', {
+        userId: request.user.id,
+        error: error.message
       });
       throw error;
     }

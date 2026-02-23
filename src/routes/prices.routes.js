@@ -2,6 +2,7 @@ import cosmosDBService from '../services/cosmos-db.service.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { createRequire } from 'module';
 import { createObjectCsvStringifier } from 'csv-writer';
+import ExcelJS from 'exceljs';
 
 const require = createRequire(import.meta.url);
 const logger = require('../logger.cjs');
@@ -303,6 +304,133 @@ export default async function priceRoutes(fastify, options) {
         searchId: request.params.id, 
         userId: request.user.id, 
         error: error.message 
+      });
+      throw error;
+    }
+  });
+
+  /**
+   * POST /api/searches/export-all-latest-prices
+   * Export latest prices from all active searches as Excel file
+   */
+  fastify.post('/api/searches/export-all-latest-prices', {
+    preHandler: authenticate
+  }, async (request, reply) => {
+    try {
+      const userId = request.user.id;
+
+      // Get all active searches for user
+      const { searches: activeSearches } = await cosmosDBService.getSearchesByUser(userId, {
+        isActive: true,
+        limit: 100
+      });
+
+      if (activeSearches.length === 0) {
+        return reply.code(404).send({
+          error: 'No Data',
+          message: 'No active searches found to export'
+        });
+      }
+
+      // Fetch latest prices for each search
+      const allPrices = [];
+      for (const search of activeSearches) {
+        try {
+          const prices = await cosmosDBService.getLatestPrices(search.id);
+          
+          // Deduplicate prices by hotelName
+          const seenHotels = new Set();
+          for (const price of prices) {
+            if (!seenHotels.has(price.hotelName)) {
+              seenHotels.add(price.hotelName);
+              allPrices.push({
+                searchName: search.searchName,
+                destination: search.criteria?.cityName || 'Unknown',
+                hotelName: price.hotelName,
+                rating: price.rating || '',
+                lowestPrice: price.numericPrice || price.parsedPrice || '',
+                currency: price.currency || '',
+                checkIn: search.criteria?.checkIn || '',
+                checkOut: search.criteria?.checkOut || '',
+                extractedAt: price.extractedAt || ''
+              });
+            }
+          }
+        } catch (error) {
+          logger.warn('Failed to fetch prices for search during bulk export', {
+            searchId: search.id,
+            error: error.message
+          });
+          // Continue with other searches
+        }
+      }
+
+      if (allPrices.length === 0) {
+        return reply.code(404).send({
+          error: 'No Data',
+          message: 'No price data available from active searches'
+        });
+      }
+
+      // Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('All Prices');
+
+      // Add header row
+      worksheet.columns = [
+        { header: 'Search Name', key: 'searchName', width: 20 },
+        { header: 'Destination', key: 'destination', width: 18 },
+        { header: 'Hotel Name', key: 'hotelName', width: 25 },
+        { header: 'Rating', key: 'rating', width: 10 },
+        { header: 'Lowest Price', key: 'lowestPrice', width: 15 },
+        { header: 'Currency', key: 'currency', width: 12 },
+        { header: 'Check-In', key: 'checkIn', width: 15 },
+        { header: 'Check-Out', key: 'checkOut', width: 15 },
+        { header: 'Last Updated', key: 'extractedAt', width: 20 }
+      ];
+
+      // Style header row
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF366092' }
+      };
+      worksheet.getRow(1).font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' }
+      };
+
+      // Add data rows
+      allPrices.forEach(price => {
+        worksheet.addRow(price);
+      });
+
+      // Auto-fit columns
+      worksheet.columns.forEach(column => {
+        column.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true };
+      });
+
+      // Generate Excel file
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      // Set headers for file download
+      const filename = `vacation-prices-all-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.header('Content-Disposition', `attachment; filename="${filename}"`);
+      reply.header('Content-Length', buffer.length);
+
+      logger.info('All-prices Excel export generated', {
+        userId,
+        searchCount: activeSearches.length,
+        priceCount: allPrices.length
+      });
+
+      return reply.send(buffer);
+    } catch (error) {
+      logger.error('Failed to export all prices to Excel', {
+        userId: request.user.id,
+        error: error.message
       });
       throw error;
     }

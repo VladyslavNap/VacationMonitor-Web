@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Prices — VacationMonitor</title>
+  <link rel="stylesheet" href="/assets/css/styles.css" />
+  <link rel="icon" type="image/x-icon" href="/assets/img/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/img/favicon-32x32.png" />
+  <link rel="icon" type="image/png" sizes="96x96" href="/assets/img/favicon-96x96.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/apple-icon-180x180.png" />
+  <link rel="manifest" href="/assets/img/manifest.json" />
+  <link rel="msapplication-config" href="/assets/img/browserconfig.xml" />
+  <meta name="msapplication-TileImage" content="/assets/img/ms-icon-144x144.png" />
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <style>
+    /* All-prices specific styles */
+    .all-prices-toolbar {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .prices-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--bg-2);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .prices-table thead {
+      background: var(--bg-3);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .prices-table th {
+      padding: 0.875rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.02em;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .prices-table th button {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-weight: 600;
+      font-size: 0.8rem;
+      padding: 0;
+      transition: color 0.2s;
+    }
+
+    .prices-table th button:hover {
+      color: var(--text);
+    }
+
+    .prices-table td {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+
+    .prices-table tbody tr:hover {
+      background: var(--bg-3);
+    }
+
+    .prices-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .hotel-name {
+      font-weight: 500;
+    }
+
+    .search-name {
+      color: var(--text-secondary);
+      font-size: 0.8rem;
+      font-weight: 500;
+    }
+
+    .price-value {
+      font-weight: 600;
+      color: var(--c-primary);
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+      flex: 1;
+      min-width: 180px;
+      padding: 1rem;
+      background: var(--bg-2);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 500;
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .sort-arrow {
+      font-size: 0.6rem;
+      opacity: 0.4;
+    }
+
+    .sort-arrow.active {
+      opacity: 1;
+    }
+
+    .search-link {
+      text-decoration: none;
+      color: var(--c-primary);
+      cursor: pointer;
+      transition: text-decoration 0.2s;
+    }
+
+    .search-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body x-data="allPrices()" x-cloak>
+
+  <!-- ── Navigation ───────────────────────────────────────── -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <div class="nav__inner">
+      <a href="/dashboard" class="nav__brand">
+        <img src="/assets/img/android-icon-48x48.png" alt="VacationMonitor" class="nav__brand-icon-img" />
+        VacationMonitor
+      </a>
+      <div class="nav__actions">
+        <template x-if="user">
+          <div class="flex items-center gap-2">
+            <a href="/new-search" class="btn btn--primary btn--sm" x-show="user">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Search
+            </a>
+            <a href="/settings" class="nav__user-btn" aria-label="Account settings">
+              <div class="nav__avatar">
+                <template x-if="user.photoURL">
+                  <img :src="user.photoURL" :alt="user.displayName" />
+                </template>
+                <template x-if="!user.photoURL">
+                  <span x-text="(user.displayName || user.email || '?')[0].toUpperCase()"></span>
+                </template>
+              </div>
+              <span class="nav__name" x-text="user.displayName || user.email"></span>
+            </a>
+            <button @click="logout()" class="btn btn--secondary btn--icon" title="Sign out" aria-label="Sign out">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+              </svg>
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Main ─────────────────────────────────────────────── -->
+  <main class="page">
+    <div class="container">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header__row">
+          <div>
+            <h1 class="page-title">All Active Prices</h1>
+            <p class="page-subtitle" x-show="!loading" x-text="
+              totalSearches + ' search' + (totalSearches !== 1 ? 'es' : '') + ' • ' + 
+              totalPrices + ' hotel' + (totalPrices !== 1 ? 's' : '')
+            "></p>
+          </div>
+          <button @click="exportToExcel()" :disabled="exporting || filteredSearches.length === 0" class="btn btn--primary">
+            <template x-if="!exporting">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/><path d="M3 7V5a1 1 0 011-1h4l2 2h8a1 1 0 011 1v4"/>
+              </svg>
+            </template>
+            <template x-if="exporting">
+              <span class="spinner" aria-hidden="true" style="border-color:#2563eb;border-right-color:transparent"></span>
+            </template>
+            <span x-text="exporting ? 'Exporting…' : 'Export to Excel'"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div x-show="!loading && filteredSearches.length > 0" class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Active Searches</div>
+          <div class="stat-value" x-text="totalSearches"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Hotels</div>
+          <div class="stat-value" x-text="totalPrices"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Lowest Price</div>
+          <div class="stat-value" x-text="lowestPriceOverall ? `${lowestPriceOverall.currency} ${lowestPriceOverall.price}` : '—'"></div>
+        </div>
+      </div>
+
+      <!-- Filters and sort toolbar -->
+      <div x-show="!loading && filteredSearches.length > 0" class="all-prices-toolbar">
+        <div class="filter-group">
+          <input 
+            type="text" 
+            class="input" 
+            placeholder="Filter by destination (e.g., Paris, Rome)"
+            x-model="destinationFilter"
+            @input="applyFilters()"
+            aria-label="Filter by destination"
+            style="width: 200px; max-width: 100%"
+          />
+        </div>
+        <div class="filter-group">
+          <label style="font-size: 0.85rem; color: var(--text-secondary);">Price range:</label>
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Min"
+            x-model.number="priceRangeMin"
+            @input="applyFilters()"
+            aria-label="Minimum price"
+            style="width: 80px"
+          />
+          <span style="color: var(--text-secondary);">to</span>
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Max"
+            x-model.number="priceRangeMax"
+            @input="applyFilters()"
+            aria-label="Maximum price"
+            style="width: 80px"
+          />
+        </div>
+      </div>
+
+      <!-- Loading skeleton -->
+      <div x-show="loading" class="card">
+        <div class="card__body">
+          <div class="flex justify-center items-center gap-2" style="padding: 3rem 1rem">
+            <span class="spinner spinner--lg" aria-hidden="true" style="color: var(--c-primary)"></span>
+            <span class="text-sm text-muted">Loading prices…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div x-show="!loading && filteredSearches.length === 0 && totalSearches === 0" class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">🔍</div>
+        <h2 class="empty-state__title">No active searches</h2>
+        <p class="empty-state__text">Create and activate searches from your dashboard to see prices here.</p>
+        <a href="/dashboard" class="btn btn--primary btn--lg">Go to Dashboard</a>
+      </div>
+
+      <!-- No results after filtering -->
+      <div x-show="!loading && totalSearches > 0 && filteredSearches.length === 0" class="empty-state">
+        <div class="empty-state__icon" aria-hidden="true">⚙️</div>
+        <h2 class="empty-state__title">No results</h2>
+        <p class="empty-state__text">Try adjusting your filters or destination search.</p>
+        <button @click="clearFilters()" class="btn btn--primary">Clear Filters</button>
+      </div>
+
+      <!-- Price table -->
+      <div x-show="!loading && filteredSearches.length > 0" class="card">
+        <div class="card__body" style="padding: 0">
+          <div style="overflow-x: auto;">
+            <table class="prices-table">
+              <thead>
+                <tr>
+                  <th>
+                    <button @click="toggleSort('searchName')">
+                      Search Name
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'searchName' }"
+                            x-text="sortBy === 'searchName' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>Destination</th>
+                  <th>Hotel Name</th>
+                  <th>Rating</th>
+                  <th>
+                    <button @click="toggleSort('lowestPrice')">
+                      Lowest Price
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'lowestPrice' }"
+                            x-text="sortBy === 'lowestPrice' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>Check-In</th>
+                  <th>Check-Out</th>
+                  <th>
+                    <button @click="toggleSort('extractedAt')">
+                      Last Updated
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'extractedAt' }"
+                            x-text="sortBy === 'extractedAt' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <template x-for="search in filteredSearches" :key="search.id">
+                  <template x-for="price in search.prices" :key="`${search.id}-${price.hotelName}`">
+                    <tr>
+                      <td>
+                        <a :href="`/search?id=${search.id}`" class="search-link" x-text="search.searchName"></a>
+                      </td>
+                      <td x-text="search.destination"></td>
+                      <td class="hotel-name" x-text="price.hotelName"></td>
+                      <td x-text="price.rating || '—'"></td>
+                      <td class="price-value">
+                        <span x-text="`${price.currency} ${price.numericPrice?.toFixed(2) || price.parsedPrice || '—'}`"></span>
+                      </td>
+                      <td x-text="search.checkIn || '—'"></td>
+                      <td x-text="search.checkOut || '—'"></td>
+                      <td style="color: var(--text-secondary); font-size: 0.85rem;">
+                        <span x-text="formatDate(price.extractedAt)"></span>
+                      </td>
+                    </tr>
+                  </template>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading more indicator -->
+      <div x-show="!loading && loadingMore" class="flex justify-center items-center gap-2" style="padding: 2rem 1rem">
+        <span class="spinner" aria-hidden="true" style="color: var(--c-primary)"></span>
+        <span class="text-sm text-muted">Loading more prices…</span>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ── Toast notifications ───────────────────────────────── -->
+  <div id="toast" role="status" aria-live="polite"></div>
+
+  <!-- ── Scripts ────────────────────────────────────────── -->
+  <script src="/assets/js/auth.js"></script>
+  <script src="/assets/js/api.js"></script>
+  <script>
+    function allPrices() {
+      return {
+        user: null,
+        loading: true,
+        loadingMore: false,
+        exporting: false,
+        searches: [],
+        filteredSearches: [],
+        totalSearches: 0,
+        totalPrices: 0,
+        destinationFilter: '',
+        priceRangeMin: null,
+        priceRangeMax: null,
+        sortBy: 'searchName',
+        sortDirection: 'asc',
+
+        async init() {
+          window.requireAuth().then(user => {
+            this.user = user;
+            this.loadAllPrices();
+          });
+        },
+
+        async loadAllPrices() {
+          try {
+            this.loading = true;
+            const data = await window.api.get('/api/searches/summary/all-prices');
+            
+            this.searches = data.searches || [];
+            this.totalSearches = data.totalSearches || 0;
+            this.totalPrices = data.totalPrices || 0;
+            
+            this.applyFilters();
+            this.loading = false;
+          } catch (error) {
+            this.loading = false;
+            showToast(`Failed to load prices: ${error.message}`, 'error');
+            console.error('Error loading all prices:', error);
+          }
+        },
+
+        applyFilters() {
+          let filtered = JSON.parse(JSON.stringify(this.searches));
+
+          // Filter by destination
+          if (this.destinationFilter.trim()) {
+            const query = this.destinationFilter.toLowerCase();
+            filtered = filtered.filter(search =>
+              search.destination?.toLowerCase().includes(query)
+            );
+          }
+
+          // Filter by price range
+          if (this.priceRangeMin !== null || this.priceRangeMax !== null) {
+            filtered = filtered.map(search => ({
+              ...search,
+              prices: search.prices?.filter(price => {
+                const p = price.numericPrice || price.parsedPrice;
+                if (p === null || p === undefined) return false;
+                if (this.priceRangeMin !== null && p < this.priceRangeMin) return false;
+                if (this.priceRangeMax !== null && p > this.priceRangeMax) return false;
+                return true;
+              }) || []
+            })).filter(search => search.prices.length > 0);
+          }
+
+          // Sort
+          this.sort(filtered);
+          this.filteredSearches = filtered;
+        },
+
+        sort(searches) {
+          searches.forEach(search => {
+            search.prices?.sort((a, b) => {
+              let aVal, bVal;
+
+              if (this.sortBy === 'lowestPrice') {
+                aVal = a.numericPrice || a.parsedPrice || 0;
+                bVal = b.numericPrice || b.parsedPrice || 0;
+              } else if (this.sortBy === 'extractedAt') {
+                aVal = new Date(a.extractedAt || 0).getTime();
+                bVal = new Date(b.extractedAt || 0).getTime();
+              } else {
+                aVal = a.hotelName || '';
+                bVal = b.hotelName || '';
+              }
+
+              if (aVal < bVal) return this.sortDirection === 'asc' ? -1 : 1;
+              if (aVal > bVal) return this.sortDirection === 'asc' ? 1 : -1;
+              return 0;
+            });
+          });
+
+          // Sort searches by specified column
+          searches.sort((a, b) => {
+            if (this.sortBy === 'searchName') {
+              const aVal = a.searchName || '';
+              const bVal = b.searchName || '';
+              return this.sortDirection === 'asc'
+                ? aVal.localeCompare(bVal)
+                : bVal.localeCompare(aVal);
+            }
+            return 0;
+          });
+        },
+
+        toggleSort(field) {
+          if (this.sortBy === field) {
+            this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortBy = field;
+            this.sortDirection = 'asc';
+          }
+          this.applyFilters();
+        },
+
+        clearFilters() {
+          this.destinationFilter = '';
+          this.priceRangeMin = null;
+          this.priceRangeMax = null;
+          this.applyFilters();
+        },
+
+        async exportToExcel() {
+          try {
+            this.exporting = true;
+            const response = await fetch('/api/searches/export-all-latest-prices', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.message || 'Export failed');
+            }
+
+            // Trigger download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Extract filename from headers
+            const contentDisposition = response.headers.get('content-disposition');
+            const filenameMatch = contentDisposition?.match(/filename="(.+?)"/);
+            a.download = filenameMatch ? filenameMatch[1] : 'vacation-prices.xlsx';
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+
+            showToast('Excel file downloaded successfully!', 'success');
+            this.exporting = false;
+          } catch (error) {
+            this.exporting = false;
+            showToast(`Export failed: ${error.message}`, 'error');
+            console.error('Export error:', error);
+          }
+        },
+
+        formatDate(dateString) {
+          if (!dateString) return '—';
+          try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          } catch (e) {
+            return dateString;
+          }
+        },
+
+        async logout() {
+          try {
+            await window.api.post('/auth/logout', {});
+            window.location.href = '/';
+          } catch (error) {
+            console.error('Logout error:', error);
+          }
+        },
+
+        get lowestPriceOverall() {
+          let lowest = null;
+          for (const search of this.filteredSearches) {
+            for (const price of search.prices) {
+              const p = price.numericPrice || price.parsedPrice;
+              if (p && (!lowest || p < lowest.price)) {
+                lowest = { price: p, currency: price.currency };
+              }
+            }
+          }
+          return lowest;
+        }
+      };
+    }
+
+    function showToast(message, type = 'info') {
+      const toast = document.getElementById('toast');
+      const div = document.createElement('div');
+      div.className = `toast toast--${type}`;
+      div.textContent = message;
+      div.style.cssText = `
+        position: fixed;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        background: ${type === 'error' ? '#dc2626' : type === 'success' ? '#16a34a' : '#3b82f6'};
+        color: white;
+        padding: 0.875rem 1rem;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideInUp 0.2s ease-out;
+      `;
+      toast.appendChild(div);
+      
+      setTimeout(() => {
+        div.style.animation = 'slideOutDown 0.2s ease-out';
+        setTimeout(() => div.remove(), 200);
+      }, 3000);
+    }
+
+    // Add animation keyframes
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideInUp {
+        from { transform: translateY(2rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideOutDown {
+        from { transform: translateY(0); opacity: 1; }
+        to { transform: translateY(2rem); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+  </script>
+</body>
+</html>

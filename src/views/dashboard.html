@@ -63,10 +63,16 @@
             <h1 class="page-title">My Searches</h1>
             <p class="page-subtitle" x-show="!loading" x-text="searches.length + ' active monitor' + (searches.length !== 1 ? 's' : '')"></p>
           </div>
-          <a href="/new-search" class="btn btn--primary" x-show="user">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-            New Search
-          </a>
+          <div class="flex items-center gap-2 flex-wrap">
+            <a href="/all-prices" class="btn btn--secondary" x-show="user">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h18M3 14h18M9 3v18M15 3v18"/></svg>
+              View All Prices
+            </a>
+            <a href="/new-search" class="btn btn--primary" x-show="user">
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+              New Search
+            </a>
+          </div>
         </div>
       </div>
 

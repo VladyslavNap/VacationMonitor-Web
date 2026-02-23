@@ -21,11 +21,10 @@ if (existsSync(envPath)) {
 const logger = require('./logger.cjs');
 
 /**
- * VacationMonitor Web — API Server + Scheduler
+ * VacationMonitor Web — API Server
  *
- * Serves the Fastify REST API (OAuth, searches, prices)
- * and runs the scheduler that polls the DB and enqueues
- * jobs to Azure Service Bus for the Worker to consume.
+ * Serves the Fastify REST API (OAuth, searches, prices).
+ * Scheduler has been moved to the Worker project.
  */
 
 /**
@@ -35,25 +34,15 @@ async function startWebServer() {
   logger.info('Starting in WEB SERVER mode...');
 
   const { startServer } = await import('./app.js');
-  const schedulerService = (await import('./services/scheduler.service.js')).default;
 
   // Start web server
   const app = await startServer();
 
-  // Also start scheduler in same process
-  try {
-    await schedulerService.start();
-  } catch (error) {
-    logger.warn('Scheduler failed to start', { error: error.message });
-    logger.info('Web server is running but scheduler is offline - monitor the health endpoint');
-  }
+  logger.info('✅ Web server started');
 
-  logger.info('✅ Web server and scheduler started');
-
-  return { app, schedulerService };
+  return { app };
 }
 
-let schedulerService = null;
 let gracefulShutdownInProgress = false;
 
 /**
@@ -75,12 +64,6 @@ async function handleShutdown(signal) {
   }, 10000);
 
   try {
-    // Stop scheduler first
-    if (schedulerService) {
-      logger.info('Stopping scheduler...');
-      await schedulerService.stop();
-    }
-
     logger.info('✅ Graceful shutdown completed');
     clearTimeout(shutdownTimeout);
     process.exit(0);
@@ -97,12 +80,11 @@ async function handleShutdown(signal) {
 async function main() {
   try {
     logger.info('='.repeat(60));
-    logger.info('VacationMonitor Web — API Server + Scheduler');
+    logger.info('VacationMonitor Web — API Server');
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info('='.repeat(60));
 
-    const services = await startWebServer();
-    schedulerService = services.schedulerService;
+    await startWebServer();
   } catch (error) {
     logger.error('Application failed to start', { error: error.message, stack: error.stack });
     process.exit(1);

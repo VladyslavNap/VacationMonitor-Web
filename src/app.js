@@ -12,7 +12,6 @@ import { createRequire } from 'module';
 
 // Import services
 import cosmosDBService from './services/cosmos-db.service.js';
-import schedulerService from './services/scheduler.service.js';
 
 // Import middleware
 import { errorHandler, notFoundHandler } from './middleware/error-handler.middleware.js';
@@ -33,6 +32,7 @@ const dashboardTemplate     = readFileSync(join(__dirname, 'views', 'dashboard.h
 const searchTemplate        = readFileSync(join(__dirname, 'views', 'search.html'), 'utf8');
 const newSearchTemplate     = readFileSync(join(__dirname, 'views', 'new-search.html'), 'utf8');
 const settingsTemplate      = readFileSync(join(__dirname, 'views', 'settings.html'), 'utf8');
+const allPricesTemplate     = readFileSync(join(__dirname, 'views', 'all-prices.html'), 'utf8');
 const privacyPolicyTemplate = readFileSync(join(__dirname, 'views', 'privacy-policy.html'), 'utf8');
 const termsOfServiceTemplate = readFileSync(join(__dirname, 'views', 'terms-of-service.html'), 'utf8');
 
@@ -185,6 +185,10 @@ export async function buildApp(opts = {}) {
       return reply.type('text/html; charset=utf-8').send(dashboardTemplate);
     });
 
+    app.get('/all-prices', async (_request, reply) => {
+      return reply.type('text/html; charset=utf-8').send(allPricesTemplate);
+    });
+
     app.get('/search', async (_request, reply) => {
       return reply.type('text/html; charset=utf-8').send(searchTemplate);
     });
@@ -206,20 +210,12 @@ export async function buildApp(opts = {}) {
     });
 
     app.get('/health', async (request, reply) => {
-      const schedulerStatus = schedulerService.getStatus();
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: process.env.NODE_ENV || 'development',
-        scheduler: {
-          isRunning: schedulerStatus.isRunning,
-          lastTickTime: schedulerStatus.lastTickTime,
-          pollIntervalMinutes: schedulerStatus.pollIntervalMinutes,
-          consecutiveErrors: schedulerStatus.consecutiveErrors,
-          maxConsecutiveErrors: schedulerStatus.maxConsecutiveErrors,
-          isDisabled: schedulerStatus.isDisabled
-        }
+        note: 'Scheduler has been moved to Worker project'
       };
     });
 
