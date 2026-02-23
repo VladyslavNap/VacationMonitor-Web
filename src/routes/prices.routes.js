@@ -310,10 +310,10 @@ export default async function priceRoutes(fastify, options) {
   });
 
   /**
-   * POST /api/searches/export-all-latest-prices
+   * GET /api/searches/export-all-latest-prices
    * Export latest prices from all active searches as Excel file
    */
-  fastify.post('/api/searches/export-all-latest-prices', {
+  fastify.get('/api/searches/export-all-latest-prices', {
     preHandler: authenticate
   }, async (request, reply) => {
     try {
@@ -350,6 +350,7 @@ export default async function priceRoutes(fastify, options) {
                 rating: price.rating || '',
                 lowestPrice: price.numericPrice || price.parsedPrice || '',
                 currency: price.currency || '',
+                hotelUrl: price.hotelUrl || '',
                 checkIn: search.criteria?.checkIn || '',
                 checkOut: search.criteria?.checkOut || '',
                 extractedAt: price.extractedAt || ''
@@ -384,6 +385,7 @@ export default async function priceRoutes(fastify, options) {
         { header: 'Rating', key: 'rating', width: 10 },
         { header: 'Lowest Price', key: 'lowestPrice', width: 15 },
         { header: 'Currency', key: 'currency', width: 12 },
+        { header: 'Booking URL', key: 'hotelUrl', width: 40 },
         { header: 'Check-In', key: 'checkIn', width: 15 },
         { header: 'Check-Out', key: 'checkOut', width: 15 },
         { header: 'Last Updated', key: 'extractedAt', width: 20 }
@@ -416,9 +418,8 @@ export default async function priceRoutes(fastify, options) {
       // Set headers for file download
       const filename = `vacation-prices-all-${new Date().toISOString().split('T')[0]}.xlsx`;
       
-      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      reply.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      reply.header('Content-Length', buffer.length);
 
       logger.info('All-prices Excel export generated', {
         userId,

@@ -382,7 +382,10 @@ export default async function searchRoutes(fastify, options) {
               lastRunAt: search.lastRunAt,
               extractedAt: latestExtractedAt,
               priceCount: dedupedPrices.length,
-              prices: dedupedPrices
+              prices: dedupedPrices.map(p => ({
+                ...p,
+                hotelUrl: p.hotelUrl || null
+              }))
             };
           } catch (error) {
             logger.warn('Failed to fetch prices for search', {
