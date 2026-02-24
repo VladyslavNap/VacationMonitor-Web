@@ -102,6 +102,13 @@
       color: var(--c-primary);
     }
 
+    .unit-value {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
     .stats-row {
       display: flex;
       gap: 2rem;
@@ -248,6 +255,17 @@
           />
         </div>
         <div class="filter-group">
+          <input 
+            type="text" 
+            class="input" 
+            placeholder="Filter by hotel name"
+            x-model="hotelFilter"
+            @input="applyFilters()"
+            aria-label="Filter by hotel name"
+            style="width: 200px; max-width: 100%"
+          />
+        </div>
+        <div class="filter-group">
           <label style="font-size: 0.85rem; color: var(--text-secondary);">Price range:</label>
           <input 
             type="number" 
@@ -267,6 +285,45 @@
             @input="applyFilters()"
             aria-label="Maximum price"
             style="width: 80px"
+          />
+        </div>
+        <div class="filter-group">
+          <label style="font-size: 0.85rem; color: var(--text-secondary);">Unit filters:</label>
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Min beds"
+            x-model.number="minBeds"
+            @input="applyFilters()"
+            aria-label="Minimum beds"
+            style="width: 96px"
+          />
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Min bedrooms"
+            x-model.number="minBedrooms"
+            @input="applyFilters()"
+            aria-label="Minimum bedrooms"
+            style="width: 110px"
+          />
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Min baths"
+            x-model.number="minBathrooms"
+            @input="applyFilters()"
+            aria-label="Minimum bathrooms"
+            style="width: 110px"
+          />
+          <input 
+            type="number" 
+            class="input" 
+            placeholder="Min area m²"
+            x-model.number="minArea"
+            @input="applyFilters()"
+            aria-label="Minimum area"
+            style="width: 120px"
           />
         </div>
       </div>
@@ -315,6 +372,34 @@
                   <th>Hotel Name</th>
                   <th>Rating</th>
                   <th>
+                    <button @click="toggleSort('bedrooms')">
+                      Bedrooms
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'bedrooms' }"
+                            x-text="sortBy === 'bedrooms' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>
+                    <button @click="toggleSort('bathrooms')">
+                      Bathrooms
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'bathrooms' }"
+                            x-text="sortBy === 'bathrooms' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>
+                    <button @click="toggleSort('area')">
+                      Area
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'area' }"
+                            x-text="sortBy === 'area' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>
+                    <button @click="toggleSort('beds')">
+                      Beds
+                      <span class="sort-arrow" :class="{ 'active': sortBy === 'beds' }"
+                            x-text="sortBy === 'beds' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
+                    </button>
+                  </th>
+                  <th>
                     <button @click="toggleSort('lowestPrice')">
                       Lowest Price
                       <span class="sort-arrow" :class="{ 'active': sortBy === 'lowestPrice' }"
@@ -342,6 +427,10 @@
                       <td x-text="search.destination"></td>
                       <td class="hotel-name" x-text="price.hotelName"></td>
                       <td x-text="price.rating || '—'"></td>
+                      <td class="unit-value" x-text="formatUnitValue(getUnitStats(price).bedrooms)"></td>
+                      <td class="unit-value" x-text="formatUnitValue(getUnitStats(price).bathrooms)"></td>
+                      <td class="unit-value" x-text="formatArea(getUnitStats(price).area)"></td>
+                      <td class="unit-value" x-text="formatUnitValue(getUnitStats(price).beds)"></td>
                       <td class="price-value">
                         <span x-text="`${price.currency} ${price.numericPrice?.toFixed(2) || price.parsedPrice || '—'}`"></span>
                       </td>
@@ -396,8 +485,13 @@
         totalSearches: 0,
         totalPrices: 0,
         destinationFilter: '',
+        hotelFilter: '',
         priceRangeMin: null,
         priceRangeMax: null,
+        minBeds: null,
+        minBedrooms: null,
+        minBathrooms: null,
+        minArea: null,
         sortBy: 'searchName',
         sortDirection: 'asc',
 
@@ -437,6 +531,17 @@
             );
           }
 
+          // Filter by hotel name
+          if (this.hotelFilter.trim()) {
+            const query = this.hotelFilter.toLowerCase();
+            filtered = filtered.map(search => ({
+              ...search,
+              prices: search.prices?.filter(price =>
+                price.hotelName?.toLowerCase().includes(query)
+              ) || []
+            })).filter(search => search.prices.length > 0);
+          }
+
           // Filter by price range
           if (this.priceRangeMin !== null || this.priceRangeMax !== null) {
             filtered = filtered.map(search => ({
@@ -446,6 +551,21 @@
                 if (p === null || p === undefined) return false;
                 if (this.priceRangeMin !== null && p < this.priceRangeMin) return false;
                 if (this.priceRangeMax !== null && p > this.priceRangeMax) return false;
+                return true;
+              }) || []
+            })).filter(search => search.prices.length > 0);
+          }
+
+          // Filter by unit stats
+          if (this.minBeds !== null || this.minBedrooms !== null || this.minBathrooms !== null || this.minArea !== null) {
+            filtered = filtered.map(search => ({
+              ...search,
+              prices: search.prices?.filter(price => {
+                const stats = this.getUnitStats(price);
+                if (this.minBeds !== null && (stats.beds ?? 0) < this.minBeds) return false;
+                if (this.minBedrooms !== null && (stats.bedrooms ?? 0) < this.minBedrooms) return false;
+                if (this.minBathrooms !== null && (stats.bathrooms ?? 0) < this.minBathrooms) return false;
+                if (this.minArea !== null && (stats.area ?? 0) < this.minArea) return false;
                 return true;
               }) || []
             })).filter(search => search.prices.length > 0);
@@ -467,6 +587,11 @@
               } else if (this.sortBy === 'extractedAt') {
                 aVal = new Date(a.extractedAt || 0).getTime();
                 bVal = new Date(b.extractedAt || 0).getTime();
+              } else if (['beds', 'bedrooms', 'bathrooms', 'area'].includes(this.sortBy)) {
+                const aStats = this.getUnitStats(a);
+                const bStats = this.getUnitStats(b);
+                aVal = aStats[this.sortBy] ?? -1;
+                bVal = bStats[this.sortBy] ?? -1;
               } else {
                 aVal = a.hotelName || '';
                 bVal = b.hotelName || '';
@@ -503,8 +628,13 @@
 
         clearFilters() {
           this.destinationFilter = '';
+          this.hotelFilter = '';
           this.priceRangeMin = null;
           this.priceRangeMax = null;
+          this.minBeds = null;
+          this.minBedrooms = null;
+          this.minBathrooms = null;
+          this.minArea = null;
           this.applyFilters();
         },
 
@@ -553,6 +683,43 @@
           } catch (e) {
             return dateString;
           }
+        },
+
+        getUnitStats(price) {
+          if (!price || !Array.isArray(price.units) || price.units.length === 0) {
+            return { bedrooms: null, bathrooms: null, area: null, beds: null };
+          }
+          if (price._unitStats) return price._unitStats;
+          const toNumber = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+          };
+          let bedrooms = null;
+          let bathrooms = null;
+          let area = null;
+          let beds = null;
+          for (const unit of price.units) {
+            const unitBedrooms = toNumber(unit?.bedrooms);
+            const unitBathrooms = toNumber(unit?.bathrooms);
+            const unitArea = toNumber(unit?.area);
+            const unitBeds = toNumber(unit?.bedsCount);
+            if (unitBedrooms != null) bedrooms = Math.max(bedrooms ?? 0, unitBedrooms);
+            if (unitBathrooms != null) bathrooms = Math.max(bathrooms ?? 0, unitBathrooms);
+            if (unitArea != null) area = Math.max(area ?? 0, unitArea);
+            if (unitBeds != null) beds = Math.max(beds ?? 0, unitBeds);
+          }
+          price._unitStats = { bedrooms, bathrooms, area, beds };
+          return price._unitStats;
+        },
+
+        formatUnitValue(value) {
+          if (value == null || Number.isNaN(value)) return '—';
+          return value;
+        },
+
+        formatArea(value) {
+          if (value == null || Number.isNaN(value)) return '—';
+          return `${value} m²`;
         },
 
         async logout() {

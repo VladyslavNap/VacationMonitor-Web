@@ -329,6 +329,12 @@ tbody tr:hover { background: var(--c-bg); }
 .td-hotel { font-weight: 600; }
 .td-stars { color: #f59e0b; letter-spacing: 1px; }
 .td-muted { color: var(--c-text-muted); font-size: 0.82rem; }
+.td-unit {
+  color: var(--c-text-muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 
 /* ---- Unit details (property types) ------------------------ */
 .units-grid {

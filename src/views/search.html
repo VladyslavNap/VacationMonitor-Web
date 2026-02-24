@@ -216,7 +216,7 @@
             </div>
             <span x-show="(latestPrices.length || search?.latestPrices?.length || prices.length)" class="text-xs text-muted" x-text="'Extracted ' + formatDateTime((latestPrices.length > 0 ? latestPrices[0] : search?.latestPrices?.[0] || prices[0])?.extractedAt)"></span>
           </div>
-          <!-- Bedroom filter -->
+          <!-- Unit filters -->
           <div class="flex items-center gap-3 mb-4 flex-wrap">
             <label for="minBedrooms" class="text-sm" style="font-weight:600;color:var(--c-text-muted)">
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="display:inline-block;vertical-align:middle;margin-right:4px"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M2 13h20M6 10V7"/></svg>
@@ -230,7 +230,27 @@
               <option :value="4">4+</option>
               <option :value="5">5+</option>
             </select>
-            <span x-show="minBedrooms > 0 && filteredLatestPrices.length !== sortedLatestPrices.length" class="text-xs text-muted">
+            <label for="minBathrooms" class="text-sm" style="font-weight:600;color:var(--c-text-muted)">Min bathrooms:</label>
+            <select id="minBathrooms" x-model.number="minBathrooms" class="input" style="width:120px;height:32px;font-size:0.85rem">
+              <option :value="0">Any</option>
+              <option :value="1">1+</option>
+              <option :value="2">2+</option>
+              <option :value="3">3+</option>
+              <option :value="4">4+</option>
+              <option :value="5">5+</option>
+            </select>
+            <label for="minArea" class="text-sm" style="font-weight:600;color:var(--c-text-muted)">Min area:</label>
+            <input id="minArea" type="number" min="0" step="1" placeholder="m²" x-model.number="minArea" class="input" style="width:110px;height:32px;font-size:0.85rem" />
+            <label for="minBeds" class="text-sm" style="font-weight:600;color:var(--c-text-muted)">Min beds:</label>
+            <select id="minBeds" x-model.number="minBeds" class="input" style="width:110px;height:32px;font-size:0.85rem">
+              <option :value="0">Any</option>
+              <option :value="1">1+</option>
+              <option :value="2">2+</option>
+              <option :value="3">3+</option>
+              <option :value="4">4+</option>
+              <option :value="5">5+</option>
+            </select>
+            <span x-show="hasUnitFilters && filteredLatestPrices.length !== sortedLatestPrices.length" class="text-xs text-muted">
               <span x-text="filteredLatestPrices.length"></span> of <span x-text="sortedLatestPrices.length"></span> shown
             </span>
           </div>
@@ -265,6 +285,18 @@
                 </th>
                 <th>Stars</th>
                 <th>Location</th>
+                <th class="sortable" @click="setSort('bedrooms')" :aria-sort="sortField === 'bedrooms' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Bedrooms <span x-text="sortField === 'bedrooms' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
+                <th class="sortable" @click="setSort('bathrooms')" :aria-sort="sortField === 'bathrooms' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Bathrooms <span x-text="sortField === 'bathrooms' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
+                <th class="sortable" @click="setSort('area')" :aria-sort="sortField === 'area' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Area <span x-text="sortField === 'area' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
+                <th class="sortable" @click="setSort('beds')" :aria-sort="sortField === 'beds' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+                  Beds <span x-text="sortField === 'beds' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
+                </th>
                 <th class="sortable" @click="setSort('numericPrice')" :aria-sort="sortField === 'numericPrice' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
                   Price <span x-text="sortField === 'numericPrice' ? (sortDir === 'asc' ? '↑' : '↓') : ''"></span>
                 </th>
@@ -274,7 +306,6 @@
             </thead>
             <tbody>
               <template x-for="price in filteredLatestPrices" :key="price.id">
-                <!-- Main row -->
                 <tr>
                   <td style="text-align:center;padding:0.75rem">
                     <button @click="toggleHotelExpansion(price.hotelName)" 
@@ -290,6 +321,10 @@
                   <td class="td-hotel" x-text="price.hotelName || '—'"></td>
                   <td class="td-stars" x-text="ratingStars(price.rating)"></td>
                   <td class="td-muted" x-text="price.location || price.cityName || '—'"></td>
+                  <td class="td-unit" x-text="formatUnitValue(getUnitStats(price).bedrooms)"></td>
+                  <td class="td-unit" x-text="formatUnitValue(getUnitStats(price).bathrooms)"></td>
+                  <td class="td-unit" x-text="formatArea(getUnitStats(price).area)"></td>
+                  <td class="td-unit" x-text="formatUnitValue(getUnitStats(price).beds)"></td>
                   <td class="td-price" x-text="fmtPrice(price.numericPrice)"></td>
                   <td class="td-muted" x-text="formatDateTime(price.extractedAt)"></td>
                   <td>
@@ -300,98 +335,12 @@
                     </a>
                   </td>
                 </tr>
-                <!-- Unit details row -->
-                <template x-if="price.units && price.units.length > 0">
-                  <tr style="background:rgba(37,99,235,0.02);border-left:3px solid #2563eb40">
-                    <td colspan="7" style="padding:0.75rem 1.5rem">
-                      <div class="units-grid">
-                        <template x-for="unit in price.units" :key="unit.name">
-                          <div class="unit-card">
-                            <div class="unit-card__header">
-                              <span class="unit-card__name" x-text="(unit.quantity > 1 ? unit.quantity + '× ' : '') + unit.name"></span>
-                            </div>
-                            <div class="unit-card__specs">
-                              <span x-show="unit.bedrooms" class="unit-spec" :title="'Bedrooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M2 13h20M6 10V7"/></svg>
-                                <span x-text="unit.bedrooms"></span>
-                              </span>
-                              <span x-show="unit.bathrooms" class="unit-spec" :title="'Bathrooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6h6M12 3v3m-6 9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3M4 12h16a1 1 0 0 1 1 1v2M5 17v2m14-2v2"/></svg>
-                                <span x-text="unit.bathrooms"></span>
-                              </span>
-                              <span x-show="unit.livingRooms" class="unit-spec" :title="'Living rooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                                <span x-text="unit.livingRooms"></span>
-                              </span>
-                              <span x-show="unit.kitchens" class="unit-spec" :title="'Kitchens'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20M21 15V2v0a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
-                                <span x-text="unit.kitchens"></span>
-                              </span>
-                              <span x-show="unit.area" class="unit-spec" :title="'Area'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                                <span x-text="unit.area + ' m²'"></span>
-                              </span>
-                              <span x-show="unit.bedsCount" class="unit-spec" :title="'Beds'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
-                                <span x-text="unit.bedsCount + ' bed' + (unit.bedsCount !== 1 ? 's' : '')"></span>
-                              </span>
-                            </div>
-                            <p x-show="unit.beds" class="unit-card__beds" x-text="unit.beds"></p>
-                          </div>
-                        </template>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
-                <!-- Unit details row (outdated hotels) -->
-                <template x-if="prices[0].units && prices[0].units.length > 0">
-                  <tr style="background:rgba(107,114,128,0.02);border-left:3px solid #6b728040">
-                    <td colspan="7" style="padding:0.75rem 1.5rem">
-                      <div class="units-grid">
-                        <template x-for="unit in prices[0].units" :key="unit.name">
-                          <div class="unit-card">
-                            <div class="unit-card__header">
-                              <span class="unit-card__name" x-text="(unit.quantity > 1 ? unit.quantity + '× ' : '') + unit.name"></span>
-                            </div>
-                            <div class="unit-card__specs">
-                              <span x-show="unit.bedrooms" class="unit-spec" :title="'Bedrooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M2 13h20M6 10V7"/></svg>
-                                <span x-text="unit.bedrooms"></span>
-                              </span>
-                              <span x-show="unit.bathrooms" class="unit-spec" :title="'Bathrooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 6h6M12 3v3m-6 9a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3M4 12h16a1 1 0 0 1 1 1v2M5 17v2m14-2v2"/></svg>
-                                <span x-text="unit.bathrooms"></span>
-                              </span>
-                              <span x-show="unit.livingRooms" class="unit-spec" :title="'Living rooms'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                                <span x-text="unit.livingRooms"></span>
-                              </span>
-                              <span x-show="unit.kitchens" class="unit-spec" :title="'Kitchens'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2M7 2v20M21 15V2v0a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>
-                                <span x-text="unit.kitchens"></span>
-                              </span>
-                              <span x-show="unit.area" class="unit-spec" :title="'Area'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                                <span x-text="unit.area + ' m²'"></span>
-                              </span>
-                              <span x-show="unit.bedsCount" class="unit-spec" :title="'Beds'">
-                                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/></svg>
-                                <span x-text="unit.bedsCount + ' bed' + (unit.bedsCount !== 1 ? 's' : '')"></span>
-                              </span>
-                            </div>
-                            <p x-show="unit.beds" class="unit-card__beds" x-text="unit.beds"></p>
-                          </div>
-                        </template>
-                      </div>
-                    </td>
-                  </tr>
-                </template>
                 <!-- Expanded history rows -->
                 <template x-if="expandedHotel === price.hotelName">
                   <template x-for="histPrice in getPricesForHotel(price.hotelName, prices)" :key="histPrice.id">
                     <tr style="background:rgba(37,99,235,0.04)">
                       <td style="padding:0.5rem 0.75rem"></td>
-                      <td colspan="6" style="padding:0.75rem;font-size:0.85rem;color:var(--c-text-muted)">
+                      <td colspan="10" style="padding:0.75rem;font-size:0.85rem;color:var(--c-text-muted)">
                         <div class="flex items-center gap-4">
                           <span><strong x-text="fmtPrice(histPrice.numericPrice)"></strong></span>
                           <span style="color:var(--c-text-muted)">Recorded <span x-text="formatDateTime(histPrice.extractedAt)"></span></span>
@@ -593,6 +542,9 @@
         sortField: 'numericPrice',
         sortDir: 'asc',
         minBedrooms: 0,
+        minBathrooms: 0,
+        minArea: 0,
+        minBeds: 0,
         filterStart: '',
         filterEnd: '',
         toast: null,
@@ -799,8 +751,9 @@
           const dir = this.sortDir === 'asc' ? 1 : -1;
           return [...this.prices]
             .sort((a, b) => {
-              const av = a[field], bv = b[field];
-              return av < bv ? -dir : av > bv ? dir : 0;
+              const av = this.getSortValue(a, field);
+              const bv = this.getSortValue(b, field);
+              return this.compareValues(av, bv, dir);
             })
             .slice(0, 100);
         },
@@ -814,20 +767,27 @@
             : (this.search?.latestPrices?.length > 0 ? this.search.latestPrices : this.prices);
           return [...data]
             .sort((a, b) => {
-              const av = a[field], bv = b[field];
-              return av < bv ? -dir : av > bv ? dir : 0;
+              const av = this.getSortValue(a, field);
+              const bv = this.getSortValue(b, field);
+              return this.compareValues(av, bv, dir);
             })
             .slice(0, 100);
         },
 
+        get hasUnitFilters() {
+          return this.minBedrooms > 0 || this.minBathrooms > 0 || this.minArea > 0 || this.minBeds > 0;
+        },
+
         get filteredLatestPrices() {
           const sorted = this.sortedLatestPrices;
-          if (this.minBedrooms === 0) return sorted;
-          
-          // Filter properties that have at least one unit with >= minBedrooms
+          if (!this.hasUnitFilters) return sorted;
           return sorted.filter(price => {
-            if (!price.units || price.units.length === 0) return false;
-            return price.units.some(unit => unit.bedrooms && unit.bedrooms >= this.minBedrooms);
+            const stats = this.getUnitStats(price);
+            if (this.minBedrooms > 0 && (stats.bedrooms ?? 0) < this.minBedrooms) return false;
+            if (this.minBathrooms > 0 && (stats.bathrooms ?? 0) < this.minBathrooms) return false;
+            if (this.minArea > 0 && (stats.area ?? 0) < this.minArea) return false;
+            if (this.minBeds > 0 && (stats.beds ?? 0) < this.minBeds) return false;
+            return true;
           });
         },
 
@@ -844,8 +804,9 @@
           const sorted = Object.entries(grouped)
             .map(([hotel, prices]) => [hotel, prices.sort((a, b) => b.numericPrice - a.numericPrice)])
             .sort((a, b) => {
-              const av = a[1][0][field], bv = b[1][0][field];
-              return av < bv ? -dir : av > bv ? dir : 0;
+              const av = this.getSortValue(a[1][0], field);
+              const bv = this.getSortValue(b[1][0], field);
+              return this.compareValues(av, bv, dir);
             })
             .slice(0, 100);
           return sorted;
@@ -874,6 +835,62 @@
           if (v == null) return '—';
           const currency = this.search?.criteria?.currency || 'EUR';
           return new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(v);
+        },
+
+        getSortValue(price, field) {
+          const unitStats = this.getUnitStats(price);
+          if (field === 'bedrooms') return unitStats.bedrooms;
+          if (field === 'bathrooms') return unitStats.bathrooms;
+          if (field === 'area') return unitStats.area;
+          if (field === 'beds') return unitStats.beds;
+          return price ? price[field] : null;
+        },
+
+        compareValues(av, bv, dir) {
+          if (av == null && bv == null) return 0;
+          if (av == null) return 1;
+          if (bv == null) return -1;
+          if (typeof av === 'string' || typeof bv === 'string') {
+            return String(av).localeCompare(String(bv)) * dir;
+          }
+          return av < bv ? -dir : av > bv ? dir : 0;
+        },
+
+        getUnitStats(price) {
+          if (!price || !Array.isArray(price.units) || price.units.length === 0) {
+            return { bedrooms: null, bathrooms: null, area: null, beds: null };
+          }
+          if (price._unitStats) return price._unitStats;
+          const toNumber = (value) => {
+            const n = Number(value);
+            return Number.isFinite(n) ? n : null;
+          };
+          let bedrooms = null;
+          let bathrooms = null;
+          let area = null;
+          let beds = null;
+          for (const unit of price.units) {
+            const unitBedrooms = toNumber(unit?.bedrooms);
+            const unitBathrooms = toNumber(unit?.bathrooms);
+            const unitArea = toNumber(unit?.area);
+            const unitBeds = toNumber(unit?.bedsCount);
+            if (unitBedrooms != null) bedrooms = Math.max(bedrooms ?? 0, unitBedrooms);
+            if (unitBathrooms != null) bathrooms = Math.max(bathrooms ?? 0, unitBathrooms);
+            if (unitArea != null) area = Math.max(area ?? 0, unitArea);
+            if (unitBeds != null) beds = Math.max(beds ?? 0, unitBeds);
+          }
+          price._unitStats = { bedrooms, bathrooms, area, beds };
+          return price._unitStats;
+        },
+
+        formatUnitValue(value) {
+          if (value == null || Number.isNaN(value)) return '—';
+          return value;
+        },
+
+        formatArea(value) {
+          if (value == null || Number.isNaN(value)) return '—';
+          return `${value} m²`;
         },
 
         ratingStars(rating) {
