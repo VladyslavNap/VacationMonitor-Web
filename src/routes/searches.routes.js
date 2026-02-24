@@ -84,6 +84,14 @@ export default async function searchRoutes(fastify, options) {
         ? emailRecipients 
         : [request.user.email];
 
+      // Ensure schedule always has nextRun in UTC time
+      const scheduleObject = {
+        enabled: true,
+        intervalHours: 6,
+        nextRun: new Date().toISOString(),
+        ...schedule
+      };
+
       // Create search
       const searchId = `search_${nanoid(16)}`;
       const search = await cosmosDBService.createSearch({
@@ -93,11 +101,7 @@ export default async function searchRoutes(fastify, options) {
         searchUrl: parsedCriteria.sourceUrl || urlParser.buildUrl(parsedCriteria),
         criteria: parsedCriteria,
         emailRecipients: recipients,
-        schedule: schedule || {
-          enabled: true,
-          intervalHours: 6,
-          nextRun: new Date().toISOString()
-        },
+        schedule: scheduleObject,
         isActive: true
       });
 
