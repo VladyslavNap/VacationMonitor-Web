@@ -148,9 +148,9 @@
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             Edit
           </a>
-          <button @click="exportCsv()" class="btn btn--hero btn--sm">
+          <button @click="exportExcel()" class="btn btn--hero btn--sm">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/><path d="M3 7V5a1 1 0 011-1h4l2 2h8a1 1 0 011 1v4"/></svg>
-            Export CSV
+            Export Excel
           </button>
           <span x-show="search?.schedule?.nextRun" class="text-sm" style="color:rgba(255,255,255,.6);align-self:center">
             Next run: <span x-text="formatDateTime(search?.schedule?.nextRun)" style="color:rgba(255,255,255,.85)"></span>
@@ -405,7 +405,7 @@
           </table>
         </div>
         <div x-show="!loadingPrices && ((latestPrices.length || search?.latestPrices?.length || prices.length) > 100)" class="card__footer">
-          <span class="text-xs text-muted">Showing first 100 results. Export CSV for full data.</span>
+          <span class="text-xs text-muted">Showing first 100 results. Export Excel for full data.</span>
         </div>
       </div>
 
@@ -681,7 +681,7 @@
           }
         },
 
-        exportCsv() {
+        exportExcel() {
           window.open(`/api/searches/${this.searchId}/export`, '_blank');
         },
 

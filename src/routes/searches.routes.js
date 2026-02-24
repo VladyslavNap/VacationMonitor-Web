@@ -144,8 +144,16 @@ export default async function searchRoutes(fastify, options) {
         continuationToken: continuationToken
       });
 
+      // Fetch latest prices for each search
+      const searchesWithPrices = await Promise.all(
+        result.searches.map(async (search) => ({
+          ...search,
+          latestPrices: await cosmosDBService.getLatestPrices(search.id)
+        }))
+      );
+
       return reply.send({
-        searches: result.searches,
+        searches: searchesWithPrices,
         continuationToken: result.continuationToken,
         hasMore: !!result.continuationToken
       });

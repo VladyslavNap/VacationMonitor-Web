@@ -1,7 +1,6 @@
 import cosmosDBService from '../services/cosmos-db.service.js';
 import { authenticate } from '../middleware/auth.middleware.js';
 import { createRequire } from 'module';
-import { createObjectCsvStringifier } from 'csv-writer';
 import ExcelJS from 'exceljs';
 
 const require = createRequire(import.meta.url);
@@ -237,8 +236,8 @@ export default async function priceRoutes(fastify, options) {
   });
 
   /**
-   * GET /api/searches/:id/export
-   * Export price history as CSV
+  * GET /api/searches/:id/export
+  * Export price history as Excel
    */
   fastify.get('/api/searches/:id/export', {
     preHandler: authenticate
@@ -270,35 +269,40 @@ export default async function priceRoutes(fastify, options) {
         });
       }
 
-      // Create CSV
-      const csvStringifier = createObjectCsvStringifier({
-        header: [
-          { id: 'hotelName', title: 'Hotel Name' },
-          { id: 'rating', title: 'Rating' },
-          { id: 'location', title: 'Location' },
-          { id: 'cityName', title: 'City Name' },
-          { id: 'originalPriceText', title: 'Original Price Text' },
-          { id: 'parsedPrice', title: 'Parsed Price' },
-          { id: 'numericPrice', title: 'Numeric Price' },
-          { id: 'currency', title: 'Currency' },
-          { id: 'hotelUrl', title: 'Hotel URL' },
-          { id: 'extractedAt', title: 'Extracted At' },
-          { id: 'searchDestination', title: 'Search Destination' },
-          { id: 'searchDate', title: 'Search Date' }
-        ]
-      });
+      // Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Price History');
 
-      const csvHeader = csvStringifier.getHeaderString();
-      const csvBody = csvStringifier.stringifyRecords(result.prices);
-      const csv = csvHeader + csvBody;
+      worksheet.columns = [
+        { header: 'Hotel Name', key: 'hotelName', width: 30 },
+        { header: 'Rating', key: 'rating', width: 10 },
+        { header: 'Location', key: 'location', width: 20 },
+        { header: 'City Name', key: 'cityName', width: 18 },
+        { header: 'Original Price Text', key: 'originalPriceText', width: 18 },
+        { header: 'Parsed Price', key: 'parsedPrice', width: 14 },
+        { header: 'Numeric Price', key: 'numericPrice', width: 14 },
+        { header: 'Currency', key: 'currency', width: 10 },
+        { header: 'Hotel URL', key: 'hotelUrl', width: 45 },
+        { header: 'Extracted At', key: 'extractedAt', width: 20 },
+        { header: 'Search Destination', key: 'searchDestination', width: 22 },
+        { header: 'Search Date', key: 'searchDate', width: 18 }
+      ];
+
+      worksheet.addRows(result.prices);
+
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).alignment = { vertical: 'middle' };
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+      const buffer = await workbook.xlsx.writeBuffer();
 
       // Set headers for file download
-      const filename = `booking-prices-${search.searchName.replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().split('T')[0]}.csv`;
-      
-      reply.header('Content-Type', 'text/csv');
+      const filename = `booking-prices-${search.searchName.replace(/[^a-z0-9]/gi, '-')}-${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       reply.header('Content-Disposition', `attachment; filename="${filename}"`);
-      
-      return reply.send(csv);
+
+      return reply.send(buffer);
     } catch (error) {
       logger.error('Failed to export prices', { 
         searchId: request.params.id, 
