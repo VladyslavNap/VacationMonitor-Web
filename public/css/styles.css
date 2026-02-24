@@ -330,6 +330,60 @@ tbody tr:hover { background: var(--c-bg); }
 .td-stars { color: #f59e0b; letter-spacing: 1px; }
 .td-muted { color: var(--c-text-muted); font-size: 0.82rem; }
 
+/* ---- Unit details (property types) ------------------------ */
+.units-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+.unit-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  transition: box-shadow var(--t), transform var(--t);
+}
+.unit-card:hover {
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+.unit-card__header {
+  margin-bottom: 10px;
+}
+.unit-card__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--c-text);
+  line-height: 1.3;
+}
+.unit-card__specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.unit-spec {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--c-text-muted);
+  padding: 3px 8px;
+  background: var(--c-bg);
+  border-radius: var(--radius-sm);
+}
+.unit-spec svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.unit-card__beds {
+  font-size: 0.75rem;
+  color: var(--c-text-light);
+  line-height: 1.4;
+  margin-top: 6px;
+  font-style: italic;
+}
+
 /* ---- Modal overlay ---------------------------------------- */
 .overlay {
   position: fixed; inset: 0; z-index: 200;

@@ -81,11 +81,21 @@ npm start
 | Landing | `GET /` | Sign-in hero (redirects to `/dashboard` if already authenticated) |
 | Dashboard | `GET /dashboard` | All searches overview — run, pause, edit, delete |
 | All Prices | `GET /all-prices` | Aggregated latest prices from all active searches with filtering, sorting, and Excel export |
-| Search detail | `GET /search?id=` | Price trend chart, latest prices table, AI insights |
+| Search detail | `GET /search?id=` | Price trend chart, latest prices table with unit details, bedroom filter, AI insights |
 | Create / Edit | `GET /new-search[?id=]` | URL-paste or manual criteria form; `?id=` enables edit mode |
 | Settings | `GET /settings` | Profile, email notifications toggle, account deletion |
 
 The UI is powered by **Alpine.js** and **Chart.js** (both loaded from CDN). Static assets are served from `public/` at the `/assets/` prefix.
+
+### Unit Details Display
+
+Price results now include property unit information when available:
+
+- **Unit cards** display below each property showing available room types (apartments, studios, etc.)
+- **Unit specs** include bedrooms, bathrooms, living rooms, kitchens, area (m²), and bed count
+- **Bedroom filter** allows filtering properties by minimum bedroom count (client-side)
+- **Units data** comes from the Worker's Booking.com scraper and is stored in the `units` array field on each price document
+- Properties without unit data display normally without the unit section
 
 ## API Endpoints
 
