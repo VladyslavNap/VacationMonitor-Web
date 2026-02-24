@@ -48,14 +48,18 @@ export default async function searchRoutes(fastify, options) {
 
       // If URL provided, parse it
       if (searchUrl) {
-        const parseResult = urlParser.parse(searchUrl);
+        const normalizedSearchUrl = searchUrl.trim();
+        const parseResult = urlParser.parse(normalizedSearchUrl);
         if (!parseResult.success) {
           return reply.code(400).send({
             error: 'Invalid URL',
             message: parseResult.error
           });
         }
-        parsedCriteria = parseResult.criteria;
+        parsedCriteria = {
+          ...parseResult.criteria,
+          sourceUrl: normalizedSearchUrl
+        };
       }
 
       // Validate criteria
@@ -86,7 +90,7 @@ export default async function searchRoutes(fastify, options) {
         id: searchId,
         userId: request.user.id,
         searchName: searchName || parsedCriteria.cityName || 'My Search',
-        searchUrl: searchUrl || urlParser.buildUrl(parsedCriteria),
+        searchUrl: parsedCriteria.sourceUrl || urlParser.buildUrl(parsedCriteria),
         criteria: parsedCriteria,
         emailRecipients: recipients,
         schedule: schedule || {
