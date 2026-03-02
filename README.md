@@ -1,6 +1,6 @@
 # VacationMonitor Web
 
-Fastify web server providing a full-stack hotel price monitoring application. Includes Google OAuth authentication, a multi-page modern UI, search CRUD, price history with charts, AI insights, CSV export, and a built-in scheduler that enqueues scraping jobs to Azure Service Bus.
+Fastify web server providing a full-stack hotel price monitoring application. Includes Google OAuth authentication, a multi-page modern UI, search CRUD, price history with charts, AI insights, CSV export, multi-user search sharing, and job enqueuing to Azure Service Bus.
 
 ## Architecture
 
@@ -25,6 +25,7 @@ Fastify web server providing a full-stack hotel price monitoring application. In
 │  ├── Google OAuth (/auth/google)                             │
 │  ├── User management (/api/users)                            │
 │  ├── Search CRUD (/api/searches)                             │
+│  ├── Search sharing (/api/searches/:id/shares)               │
 │  ├── All-prices summary (/api/searches/summary/all-prices)   │
 │  ├── Price history (/api/searches/:id/prices)                │
 │  ├── CSV export (/api/searches/:id/export)                   │
@@ -33,7 +34,7 @@ Fastify web server providing a full-stack hotel price monitoring application. In
 │  Scheduler (polls DB every 5 min)                            │
 │  └── Enqueues jobs → Azure Service Bus ──────────────────────┼──► VacationMonitor-Worker
 │                                                              │
-│  Cosmos DB (users, searches, prices, conversations, ...)     │
+│  Cosmos DB (users, searches, prices, searchShares, ...)      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,9 +80,9 @@ npm start
 | Page | Route | Description |
 |------|-------|-------------|
 | Landing | `GET /` | Sign-in hero (redirects to `/dashboard` if already authenticated) |
-| Dashboard | `GET /dashboard` | All searches overview — run, pause, edit, delete |
-| All Prices | `GET /all-prices` | Aggregated latest prices from all active searches with filtering, sorting, and Excel export |
-| Search detail | `GET /search?id=` | Price trend chart, latest prices table with unit details, bedroom filter, AI insights |
+| Dashboard | `GET /dashboard` | All searches overview — run, pause, edit, delete; shared searches show read-only badge |
+| All Prices | `GET /all-prices` | Aggregated latest prices from owned + shared searches with filtering (including "My / Shared" filter), sorting, and Excel export |
+| Search detail | `GET /search?id=` | Price trend chart, latest prices table with unit details, bedroom filter, AI insights, share management modal |
 | Create / Edit | `GET /new-search[?id=]` | URL-paste or manual criteria form; `?id=` enables edit mode |
 | Settings | `GET /settings` | Profile, email notifications toggle, account deletion |
 
@@ -96,6 +97,17 @@ Price results now include property unit information when available:
 - **Bedroom filter** allows filtering properties by minimum bedroom count (client-side)
 - **Units data** comes from the Worker's Booking.com scraper and is stored in the `units` array field on each price document
 - Properties without unit data display normally without the unit section
+
+### Search Sharing
+
+Search owners can share their searches with other users for read-only access:
+
+- **Share modal** on the search detail page lets the owner enter a recipient's email address
+- **Shared badge** appears on dashboard cards and all-prices table rows for shared searches
+- **Read-only enforcement**: shared users can view prices, insights, and export data but cannot edit, delete, run, or re-share a search
+- **Ownership filter** on the All Prices page lets users toggle between "All searches", "My searches", and "Shared with me"
+- **Revocation**: the owner can revoke access at any time from the share modal
+- Share data is stored in the `searchShares` Cosmos DB container (partition key: `/searchId`)
 
 ## API Endpoints
 
@@ -116,6 +128,9 @@ Price results now include property unit information when available:
 | `PATCH` | `/api/searches/:id` | Update search |
 | `DELETE` | `/api/searches/:id` | Delete search |
 | `POST` | `/api/searches/:id/run` | Trigger manual run (enqueue job) |
+| `POST` | `/api/searches/:id/shares` | Share search with another user (owner only) |
+| `GET` | `/api/searches/:id/shares` | List shares for a search (owner only) |
+| `DELETE` | `/api/searches/:id/shares/:shareId` | Revoke a share (owner only) |
 | `GET` | `/api/searches/:id/prices` | Price history (with filters) |
 | `GET` | `/api/searches/:id/prices/latest` | Latest prices |
 | `GET` | `/api/searches/:id/insights` | AI insights |

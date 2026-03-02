@@ -93,6 +93,24 @@ const CONTAINER_DEFINITIONS = [
       ],
       excludedPaths: []
     }
+  },
+  {
+    id: 'searchShares',
+    partitionKey: '/searchId',
+    description: 'Search sharing and permissions',
+    throughput: 400,
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      automatic: true,
+      includedPaths: [
+        { path: '/searchId/?' },
+        { path: '/sharedWithUserId/?' },
+        { path: '/ownerId/?' }
+      ],
+      excludedPaths: [
+        { path: '/*' }
+      ]
+    }
   }
 ];
 

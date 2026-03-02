@@ -17,7 +17,8 @@ class CosmosDBService {
       searches: null,
       prices: null,
       conversations: null,
-      jobs: null
+      jobs: null,
+      searchShares: null
     };
   }
 
@@ -43,6 +44,7 @@ class CosmosDBService {
       this.containers.prices = this.database.container('prices');
       this.containers.conversations = this.database.container('conversations');
       this.containers.jobs = this.database.container('jobs');
+      this.containers.searchShares = this.database.container('searchShares');
 
       logger.info('Cosmos DB service initialized successfully', { databaseName });
     } catch (error) {
@@ -631,6 +633,177 @@ class CosmosDBService {
    */
   getJobsContainer() {
     return this.containers.jobs;
+  }
+
+  // ==================== SEARCH SHARES OPERATIONS ====================
+
+  /**
+   * Create a share (grant access to a search)
+   * @param {string} searchId - The search being shared
+   * @param {string} ownerId - The owner's user ID
+   * @param {string} sharedWithUserId - The recipient's user ID
+   * @param {string} sharedWithEmail - The recipient's email
+   * @param {Object} ownerInfo - Owner display info { displayName, email }
+   */
+  async createShare(searchId, ownerId, sharedWithUserId, sharedWithEmail, ownerInfo = {}) {
+    try {
+      const shareDoc = {
+        id: `${searchId}_${sharedWithUserId}`,
+        searchId: searchId, // Partition key
+        ownerId: ownerId,
+        sharedWithUserId: sharedWithUserId,
+        sharedWithEmail: sharedWithEmail,
+        ownerDisplayName: ownerInfo.displayName || null,
+        ownerEmail: ownerInfo.email || null,
+        permission: 'read', // Currently only read-only sharing
+        sharedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      const { resource } = await this.containers.searchShares.items.create(shareDoc);
+      logger.info('Share created successfully', { shareId: resource.id, searchId, sharedWithUserId });
+      return resource;
+    } catch (error) {
+      if (error.code === 409) {
+        logger.warn('Share already exists', { searchId, sharedWithUserId });
+        throw new Error('This search is already shared with this user');
+      }
+      logger.error('Failed to create share', { searchId, sharedWithUserId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all shares for a specific search (who has access)
+   * @param {string} searchId
+   */
+  async getSharesBySearch(searchId) {
+    try {
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.searchId = @searchId',
+        parameters: [{ name: '@searchId', value: searchId }]
+      };
+      const { resources } = await this.containers.searchShares.items.query(querySpec).fetchAll();
+      return resources;
+    } catch (error) {
+      logger.error('Failed to get shares by search', { searchId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all searches shared with a specific user
+   * @param {string} userId
+   */
+  async getSharesByUser(userId) {
+    try {
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.sharedWithUserId = @userId',
+        parameters: [{ name: '@userId', value: userId }]
+      };
+      const { resources } = await this.containers.searchShares.items.query(querySpec).fetchAll();
+      return resources;
+    } catch (error) {
+      logger.error('Failed to get shares by user', { userId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Check if a user has share access to a search
+   * @param {string} searchId
+   * @param {string} userId
+   */
+  async getShareBySearchAndUser(searchId, userId) {
+    try {
+      const shareId = `${searchId}_${userId}`;
+      const { resource } = await this.containers.searchShares.item(shareId, searchId).read();
+      return resource;
+    } catch (error) {
+      if (error.code === 404) {
+        return null;
+      }
+      logger.error('Failed to get share', { searchId, userId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a share (revoke access)
+   * @param {string} shareId
+   * @param {string} searchId - Partition key
+   */
+  async deleteShare(shareId, searchId) {
+    try {
+      await this.containers.searchShares.item(shareId, searchId).delete();
+      logger.info('Share deleted successfully', { shareId, searchId });
+    } catch (error) {
+      if (error.code === 404) {
+        logger.warn('Share not found', { shareId, searchId });
+        return;
+      }
+      logger.error('Failed to delete share', { shareId, searchId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get search if user has access (owner or shared)
+   * Returns search with _isShared flag if accessed via share
+   * @param {string} searchId
+   * @param {string} userId
+   */
+  async getSearchIfAccessible(searchId, userId) {
+    try {
+      // First try as owner
+      const ownedSearch = await this.getSearch(searchId, userId);
+      if (ownedSearch) {
+        return { ...ownedSearch, _isShared: false, _permission: 'owner' };
+      }
+
+      // Check if shared with this user
+      const share = await this.getShareBySearchAndUser(searchId, userId);
+      if (!share) {
+        return null; // No access
+      }
+
+      // Fetch the search using owner's partition key
+      const sharedSearch = await this.getSearch(searchId, share.ownerId);
+      if (!sharedSearch) {
+        logger.warn('Share exists but search not found', { searchId, ownerId: share.ownerId });
+        return null;
+      }
+
+      // Return with metadata
+      return {
+        ...sharedSearch,
+        _isShared: true,
+        _permission: share.permission,
+        _sharedBy: share.ownerDisplayName || share.ownerEmail || 'Unknown',
+        _sharedByEmail: share.ownerEmail
+      };
+    } catch (error) {
+      logger.error('Failed to get search if accessible', { searchId, userId, error: error.message });
+      throw error;
+    }
+  }
+
+  /**
+   * Get user by email address
+   * @param {string} email
+   */
+  async getUserByEmail(email) {
+    try {
+      const querySpec = {
+        query: 'SELECT * FROM c WHERE c.email = @email',
+        parameters: [{ name: '@email', value: email.toLowerCase() }]
+      };
+      const { resources } = await this.containers.users.items.query(querySpec).fetchAll();
+      return resources.length > 0 ? resources[0] : null;
+    } catch (error) {
+      logger.error('Failed to get user by email', { email, error: error.message });
+      throw error;
+    }
   }
 }
 

@@ -120,7 +120,7 @@ export default async function searchRoutes(fastify, options) {
 
   /**
    * GET /api/searches
-   * Get all searches for current user
+   * Get all searches for current user (owned + shared)
    */
   fastify.get('/api/searches', {
     preHandler: authenticate,
@@ -137,16 +137,60 @@ export default async function searchRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { isActive, limit, continuationToken } = request.query;
+      const userId = request.user.id;
 
-      const result = await cosmosDBService.getSearchesByUser(request.user.id, {
-        isActive: isActive,
-        limit: limit || 20,
-        continuationToken: continuationToken
+      // Fetch owned searches and shares in parallel
+      const [ownedResult, shares] = await Promise.all([
+        cosmosDBService.getSearchesByUser(userId, {
+          isActive: isActive,
+          limit: limit || 20,
+          continuationToken: continuationToken
+        }),
+        cosmosDBService.getSharesByUser(userId)
+      ]);
+
+      // Fetch shared searches
+      const sharedSearches = await Promise.all(
+        shares.map(async (share) => {
+          try {
+            const search = await cosmosDBService.getSearch(share.searchId, share.ownerId);
+            if (search && (isActive === undefined || search.isActive === isActive)) {
+              return {
+                ...search,
+                _isShared: true,
+                _permission: share.permission,
+                _sharedBy: share.ownerDisplayName || share.ownerEmail || 'Unknown',
+                _sharedByEmail: share.ownerEmail
+              };
+            }
+            return null;
+          } catch (error) {
+            logger.warn('Failed to fetch shared search', { searchId: share.searchId, error: error.message });
+            return null;
+          }
+        })
+      );
+
+      // Combine and filter nulls
+      const allSearches = [
+        ...ownedResult.searches.map(s => ({ ...s, _isShared: false, _permission: 'owner' })),
+        ...sharedSearches.filter(s => s !== null)
+      ];
+
+      // Sort by lastRunAt or createdAt descending
+      allSearches.sort((a, b) => {
+        const aTime = new Date(a.lastRunAt || a.createdAt || 0);
+        const bTime = new Date(b.lastRunAt || b.createdAt || 0);
+        return bTime - aTime;
       });
+
+      // Apply limit
+      const limitValue = limit || 20;
+      const paginatedSearches = allSearches.slice(0, limitValue);
 
       // Fetch latest prices for each search
       const searchesWithPrices = await Promise.all(
-        result.searches.map(async (search) => ({
+        paginatedSearches.map(async (search) => ({
           ...search,
           latestPrices: await cosmosDBService.getLatestPrices(search.id)
         }))
@@ -154,8 +198,8 @@ export default async function searchRoutes(fastify, options) {
 
       return reply.send({
         searches: searchesWithPrices,
-        continuationToken: result.continuationToken,
-        hasMore: !!result.continuationToken
+        continuationToken: null, // TODO: Implement proper pagination for combined results
+        hasMore: allSearches.length > limitValue
       });
     } catch (error) {
       logger.error('Failed to get searches', { userId: request.user.id, error: error.message });
@@ -172,7 +216,8 @@ export default async function searchRoutes(fastify, options) {
   }, async (request, reply) => {
     try {
       const { id } = request.params;
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
 
       if (!search) {
         return reply.code(404).send({
@@ -350,6 +395,7 @@ export default async function searchRoutes(fastify, options) {
   /**
    * GET /api/searches/summary/all-prices
    * Get latest prices for all active searches (for the all-prices page)
+   * Includes owned and shared searches
    */
   fastify.get('/api/searches/summary/all-prices', {
     preHandler: authenticate
@@ -357,13 +403,43 @@ export default async function searchRoutes(fastify, options) {
     try {
       const userId = request.user.id;
 
-      // Get all active searches for user
-      const { searches: activeSearches } = await cosmosDBService.getSearchesByUser(userId, {
-        isActive: true,
-        limit: 100
-      });
+      // Fetch owned searches and shares in parallel
+      const [ownedResult, shares] = await Promise.all([
+        cosmosDBService.getSearchesByUser(userId, {
+          isActive: true,
+          limit: 100
+        }),
+        cosmosDBService.getSharesByUser(userId)
+      ]);
 
-      if (activeSearches.length === 0) {
+      // Fetch shared searches
+      const sharedSearches = await Promise.all(
+        shares.map(async (share) => {
+          try {
+            const search = await cosmosDBService.getSearch(share.searchId, share.ownerId);
+            if (search && search.isActive) {
+              return {
+                ...search,
+                _isShared: true,
+                _sharedBy: share.ownerDisplayName || share.ownerEmail || 'Unknown',
+                _sharedByEmail: share.ownerEmail
+              };
+            }
+            return null;
+          } catch (error) {
+            logger.warn('Failed to fetch shared search for all-prices', { searchId: share.searchId, error: error.message });
+            return null;
+          }
+        })
+      );
+
+      // Combine owned and shared searches
+      const allSearches = [
+        ...ownedResult.searches.map(s => ({ ...s, _isShared: false })),
+        ...sharedSearches.filter(s => s !== null)
+      ];
+
+      if (allSearches.length === 0) {
         return reply.send({
           searches: [],
           totalSearches: 0,
@@ -373,7 +449,7 @@ export default async function searchRoutes(fastify, options) {
 
       // Fetch latest prices for each search
       const searchesWithPrices = await Promise.all(
-        activeSearches.map(async (search) => {
+        allSearches.map(async (search) => {
           try {
             const prices = await cosmosDBService.getLatestPrices(search.id);
             const latestExtractedAt = prices.length > 0 ? prices[0].extractedAt : null;
@@ -401,7 +477,10 @@ export default async function searchRoutes(fastify, options) {
               prices: dedupedPrices.map(p => ({
                 ...p,
                 hotelUrl: p.hotelUrl || null
-              }))
+              })),
+              _isShared: search._isShared,
+              _sharedBy: search._sharedBy || null,
+              _sharedByEmail: search._sharedByEmail || null
             };
           } catch (error) {
             logger.warn('Failed to fetch prices for search', {
@@ -419,7 +498,10 @@ export default async function searchRoutes(fastify, options) {
               lastRunAt: search.lastRunAt,
               extractedAt: null,
               priceCount: 0,
-              prices: []
+              prices: [],
+              _isShared: search._isShared,
+              _sharedBy: search._sharedBy || null,
+              _sharedByEmail: search._sharedByEmail || null
             };
           }
         })
@@ -430,17 +512,209 @@ export default async function searchRoutes(fastify, options) {
 
       logger.info('All-prices summary fetched', {
         userId,
-        activeSearchCount: activeSearches.length,
+        ownedSearchCount: ownedResult.searches.length,
+        sharedSearchCount: sharedSearches.filter(s => s !== null).length,
+        totalSearchCount: allSearches.length,
         totalPrices
       });
 
       return reply.send({
         searches: searchesWithPrices,
-        totalSearches: activeSearches.length,
+        totalSearches: allSearches.length,
         totalPrices
       });
     } catch (error) {
       logger.error('Failed to get all-prices summary', {
+        userId: request.user.id,
+        error: error.message
+      });
+      throw error;
+    }
+  });
+
+  // ==================== SHARE MANAGEMENT ROUTES ====================
+
+  /**
+   * POST /api/searches/:id/shares
+   * Share a search with another user
+   */
+  fastify.post('/api/searches/:id/shares', {
+    preHandler: authenticate,
+    schema: {
+      body: {
+        type: 'object',
+        required: ['email'],
+        properties: {
+          email: { type: 'string', format: 'email' }
+        }
+      }
+    }
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params;
+      const { email } = request.body;
+      const userId = request.user.id;
+
+      // Verify search exists and user owns it
+      const search = await cosmosDBService.getSearch(id, userId);
+      if (!search) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Search not found'
+        });
+      }
+
+      // Prevent sharing with self
+      if (email.toLowerCase() === request.user.email.toLowerCase()) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          message: 'You cannot share a search with yourself'
+        });
+      }
+
+      // Look up recipient by email
+      const recipient = await cosmosDBService.getUserByEmail(email);
+      if (!recipient) {
+        return reply.code(404).send({
+          error: 'User Not Found',
+          message: 'No user found with that email address'
+        });
+      }
+
+      // Create share
+      try {
+        const share = await cosmosDBService.createShare(
+          id,
+          userId,
+          recipient.id,
+          recipient.email,
+          {
+            displayName: request.user.displayName,
+            email: request.user.email
+          }
+        );
+
+        logger.info('Search shared successfully', {
+          searchId: id,
+          ownerId: userId,
+          sharedWithUserId: recipient.id
+        });
+
+        return reply.code(201).send({
+          success: true,
+          message: `Search shared with ${recipient.displayName || recipient.email}`,
+          share: {
+            id: share.id,
+            searchId: share.searchId,
+            sharedWithEmail: share.sharedWithEmail,
+            sharedWithUserId: share.sharedWithUserId,
+            permission: share.permission,
+            sharedAt: share.sharedAt
+          }
+        });
+      } catch (error) {
+        if (error.message.includes('already shared')) {
+          return reply.code(409).send({
+            error: 'Already Shared',
+            message: error.message
+          });
+        }
+        throw error;
+      }
+    } catch (error) {
+      logger.error('Failed to share search', {
+        searchId: request.params.id,
+        userId: request.user.id,
+        error: error.message
+      });
+      throw error;
+    }
+  });
+
+  /**
+   * GET /api/searches/:id/shares
+   * List all shares for a search (owner only)
+   */
+  fastify.get('/api/searches/:id/shares', {
+    preHandler: authenticate
+  }, async (request, reply) => {
+    try {
+      const { id } = request.params;
+      const userId = request.user.id;
+
+      // Verify search exists and user owns it
+      const search = await cosmosDBService.getSearch(id, userId);
+      if (!search) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Search not found'
+        });
+      }
+
+      // Get all shares for this search
+      const shares = await cosmosDBService.getSharesBySearch(id);
+
+      // Format response
+      const formattedShares = shares.map(share => ({
+        id: share.id,
+        email: share.sharedWithEmail,
+        userId: share.sharedWithUserId,
+        permission: share.permission,
+        sharedAt: share.sharedAt
+      }));
+
+      return reply.send({
+        searchId: id,
+        shares: formattedShares,
+        count: formattedShares.length
+      });
+    } catch (error) {
+      logger.error('Failed to get shares', {
+        searchId: request.params.id,
+        userId: request.user.id,
+        error: error.message
+      });
+      throw error;
+    }
+  });
+
+  /**
+   * DELETE /api/searches/:id/shares/:shareId
+   * Revoke a share (owner only)
+   */
+  fastify.delete('/api/searches/:id/shares/:shareId', {
+    preHandler: authenticate
+  }, async (request, reply) => {
+    try {
+      const { id, shareId } = request.params;
+      const userId = request.user.id;
+
+      // Verify search exists and user owns it
+      const search = await cosmosDBService.getSearch(id, userId);
+      if (!search) {
+        return reply.code(404).send({
+          error: 'Not Found',
+          message: 'Search not found'
+        });
+      }
+
+      // Delete the share
+      await cosmosDBService.deleteShare(shareId, id);
+
+      logger.info('Share revoked successfully', {
+        searchId: id,
+        shareId: shareId,
+        userId: userId
+      });
+
+      return reply.send({
+        success: true,
+        message: 'Share access revoked successfully'
+      });
+    } catch (error) {
+      logger.error('Failed to revoke share', {
+        searchId: request.params.id,
+        shareId: request.params.shareId,
         userId: request.user.id,
         error: error.message
       });

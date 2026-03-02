@@ -115,10 +115,20 @@
                 <a :href="`/search?id=${search.id}`" class="search-card__title truncate min-w-0"
                    :aria-label="`View ${search.searchName}`"
                    x-text="search.searchName || 'Unnamed search'"></a>
-                <span :class="{
-                  'badge badge--dot badge--active':  search.isActive,
-                  'badge badge--dot badge--paused':  !search.isActive
-                }" x-text="search.isActive ? 'Active' : 'Paused'"></span>
+                <div class="flex items-center gap-2">
+                  <span x-show="search._isShared"
+                        class="badge"
+                        style="background:rgba(37,99,235,.1);color:#2563eb;border-color:rgba(37,99,235,.3);font-size:0.7rem">
+                    <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="margin-right:2px">
+                      <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/>
+                    </svg>
+                    Shared by <span x-text="search._sharedBy || 'Unknown'"></span>
+                  </span>
+                  <span :class="{
+                    'badge badge--dot badge--active':  search.isActive,
+                    'badge badge--dot badge--paused':  !search.isActive
+                  }" x-text="search.isActive ? 'Active' : 'Paused'"></span>
+                </div>
               </div>
 
               <!-- Meta rows -->
@@ -170,9 +180,10 @@
                 View
               </a>
               <button @click="runSearch(search.id)"
-                      :disabled="runningIds.has(search.id)"
+                      :disabled="runningIds.has(search.id) || search._isShared"
                       class="btn btn--secondary btn--sm"
-                      :aria-label="`Run ${search.searchName}`">
+                      :aria-label="`Run ${search.searchName}`"
+                      x-show="!search._isShared">
                 <template x-if="!runningIds.has(search.id)">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
                 </template>
@@ -183,7 +194,8 @@
               </button>
               <button @click="toggleActive(search)"
                       class="btn btn--secondary btn--sm"
-                      :aria-label="search.isActive ? 'Pause search' : 'Resume search'">
+                      :aria-label="search.isActive ? 'Pause search' : 'Resume search'"
+                      x-show="!search._isShared">
                 <template x-if="search.isActive">
                   <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
                 </template>
@@ -192,10 +204,18 @@
                 </template>
                 <span x-text="search.isActive ? 'Pause' : 'Resume'"></span>
               </button>
-              <a :href="`/new-search?id=${search.id}`" class="btn btn--secondary btn--icon-sm btn--icon" :aria-label="`Edit ${search.searchName}`" title="Edit">
+              <a :href="`/new-search?id=${search.id}`" 
+                 class="btn btn--secondary btn--icon-sm btn--icon" 
+                 :aria-label="`Edit ${search.searchName}`" 
+                 title="Edit"
+                 x-show="!search._isShared">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
               </a>
-              <button @click="confirmDelete(search.id)" class="btn btn--danger btn--icon-sm btn--icon" :aria-label="`Delete ${search.searchName}`" title="Delete">
+              <button @click="confirmDelete(search.id)" 
+                      class="btn btn--danger btn--icon-sm btn--icon" 
+                      :aria-label="`Delete ${search.searchName}`" 
+                      title="Delete"
+                      x-show="!search._isShared">
                 <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
               </button>
             </div>

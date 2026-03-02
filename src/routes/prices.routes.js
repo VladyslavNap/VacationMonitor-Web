@@ -68,8 +68,8 @@ export default async function priceRoutes(fastify, options) {
       const { id } = request.params;
       const { startDate, endDate, hotelName, limit, continuationToken } = request.query;
 
-      // Verify search exists and belongs to user
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
       if (!search) {
         return reply.code(404).send({
           error: 'Not Found',
@@ -115,8 +115,8 @@ export default async function priceRoutes(fastify, options) {
     try {
       const { id } = request.params;
 
-      // Verify search exists and belongs to user
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
       if (!search) {
         return reply.code(404).send({
           error: 'Not Found',
@@ -155,8 +155,8 @@ export default async function priceRoutes(fastify, options) {
     try {
       const { id } = request.params;
 
-      // Verify search exists and belongs to user
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
       if (!search) {
         return reply.code(404).send({
           error: 'Not Found',
@@ -194,8 +194,8 @@ export default async function priceRoutes(fastify, options) {
     try {
       const { id } = request.params;
 
-      // Verify search exists and belongs to user
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
       if (!search) {
         return reply.code(404).send({
           error: 'Not Found',
@@ -245,8 +245,8 @@ export default async function priceRoutes(fastify, options) {
     try {
       const { id } = request.params;
 
-      // Verify search exists and belongs to user
-      const search = await cosmosDBService.getSearch(id, request.user.id);
+      // Allow access for owner or shared users
+      const search = await cosmosDBService.getSearchIfAccessible(id, request.user.id);
       if (!search) {
         return reply.code(404).send({
           error: 'Not Found',

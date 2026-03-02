@@ -5,7 +5,7 @@ name: Workspace Instructions
 # VacationMonitor Web — Copilot Instructions
 
 ## Project Overview
-- Fastify web API (ESM) that provides Google OAuth authentication, search management, price browsing, and CSV export endpoints.
+- Fastify web API (ESM) that provides Google OAuth authentication, search management, price browsing, multi-user search sharing, and CSV export endpoints.
 - **Scheduler operations have been moved to the Worker project** for better separation of concerns and scalability.
 - Entry point: `src/index.js` (starts Fastify server).
 
@@ -23,7 +23,8 @@ name: Workspace Instructions
 - **OAuth**: `src/auth/google-oauth.service.js`
 - **URL parser**: `src/parsers/booking-url-parser.js`
 - **Job queue (sender)**: `src/services/job-queue.service.js` — enqueues jobs; `createReceiver()` unused here
-- **Database**: `src/services/cosmos-db.service.js` — Cosmos DB operations for users, searches, prices, conversations
+- **Database**: `src/services/cosmos-db.service.js` — Cosmos DB operations for users, searches, prices, conversations, searchShares
+- **Sharing**: Share operations (`createShare`, `getSharesByUser`, `getSharesBySearch`, `deleteShare`, `getSearchIfAccessible`, `getUserByEmail`) live in `cosmos-db.service.js`
 - **Logging**: `src/logger.cjs` — Winston, writes to `logs/`
 - **Config**: `config/search-config.json`
 - **DB scripts**: `scripts/init-cosmos-db.js`, `scripts/migrate-data.js`
@@ -52,6 +53,7 @@ name: Workspace Instructions
 - **Frontend auth**: HTML page routes are unauthenticated at the Fastify level; each page calls `window.requireAuth()` on Alpine.js `init()` which hits `GET /auth/status` and redirects to `/` if not authenticated. This keeps auth logic client-side and consistent.
 - **CSP disabled**: `contentSecurityPolicy: false` globally in `app.js`, which allows Alpine.js and Chart.js to load from `cdn.jsdelivr.net`. Tighten in production with explicit CDN source allowlists.
 - **Unit details**: Price documents include a `units` array field (extracted by Worker) with property unit types. The search detail page displays unit cards showing bedrooms, bathrooms, area, etc., and includes a bedroom filter for client-side filtering.
+- **Search sharing**: The `searchShares` container (partition key `/searchId`) stores read-only share grants between users. `getSearchIfAccessible(searchId, userId)` is the authorization helper that checks ownership first, then share access. Owner-only operations (PATCH, DELETE, POST run, share management) verify `search.userId === userId`. Read operations (GET search/prices/insights/export) use `getSearchIfAccessible`. Shared searches include `_isShared`, `_sharedBy`, `_sharedByEmail`, and `_permission` metadata flags added by the route handlers. The frontend uses these flags to hide edit/delete/run controls and show "Shared by" badges.
 
 ## Development Guidance
 - Prefer updating config in `config/search-config.json` rather than hardcoding.

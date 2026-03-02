@@ -72,6 +72,16 @@
 
       <!-- Detail hero -->
       <div x-show="!loadingSearch && search" class="detail-hero">
+        <!-- Shared by banner -->
+        <div x-show="search?._isShared" class="alert alert--info mb-3" style="background:rgba(37,99,235,.1);border-color:rgba(37,99,235,.3);color:#2563eb">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0">
+            <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+          </svg>
+          <div>
+            <strong>Shared with you</strong> by <span x-text="search?._sharedBy"></span>.
+            You have <strong>read-only</strong> access to this search and its price data.
+          </div>
+        </div>
         <div class="flex items-start justify-between gap-4 flex-wrap">
           <div class="min-w-0">
             <h1 class="detail-hero__title truncate" x-text="search?.searchName || 'Unnamed search'"></h1>
@@ -137,17 +147,23 @@
           </div>
         </div>
         <div class="detail-hero__actions">
-          <button @click="runSearch()" :disabled="running" class="btn btn--hero-primary btn--sm">
+          <button @click="runSearch()" :disabled="running || search?._isShared" class="btn btn--hero-primary btn--sm">
             <template x-if="!running">
               <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
             </template>
             <template x-if="running"><span class="spinner" aria-hidden="true" style="border-color:#2563eb;border-right-color:transparent"></span></template>
             <span x-text="running ? 'Queuing…' : 'Run now'"></span>
           </button>
-          <a :href="`/new-search?id=${searchId}`" class="btn btn--hero btn--sm">
+          <a :href="`/new-search?id=${searchId}`" class="btn btn--hero btn--sm" x-show="!search?._isShared">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
             Edit
           </a>
+          <button @click="shareDialogOpen = true" class="btn btn--hero btn--sm" x-show="!search?._isShared">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+            </svg>
+            Share
+          </button>
           <button @click="exportExcel()" class="btn btn--hero btn--sm">
             <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 10v6m0 0l-3-3m3 3l3-3M3 17v3a1 1 0 001 1h16a1 1 0 001-1v-3"/><path d="M3 7V5a1 1 0 011-1h4l2 2h8a1 1 0 011 1v4"/></svg>
             Export Excel
@@ -196,9 +212,28 @@
             </div>
           </div>
 
+          <!-- Chart toggle -->
+          <div x-show="!loadingPrices && prices.length > 0" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.75rem">
+            <input 
+              type="checkbox" 
+              id="showOnlyChangedPrices" 
+              x-model="showOnlyChangedPrices"
+              @change="renderChart()"
+              style="cursor:pointer"
+            />
+            <label for="showOnlyChangedPrices" style="cursor:pointer;font-size:0.9rem;margin:0">
+              Show only prices with changes (varies across recorded dates)
+            </label>
+          </div>
+
           <!-- Chart canvas -->
           <div x-show="!loadingPrices && prices.length > 0" class="chart-wrap">
-            <canvas id="priceChart" role="img" aria-label="Price trend chart"></canvas>
+            <div x-show="chartHasData()">
+              <canvas id="priceChart" role="img" aria-label="Price trend chart"></canvas>
+            </div>
+            <div x-show="!chartHasData()" style="padding:2rem;text-align:center;color:var(--c-text-muted)">
+              <p>No hotels found with price changes in the selected date range.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -512,6 +547,67 @@
     </div>
   </main>
 
+  <!-- ── Share modal ───────────────────────────────────────── -->
+  <div x-show="shareDialogOpen" class="overlay" role="dialog" aria-modal="true" aria-labelledby="share-title" @keydown.escape.window="shareDialogOpen = false">
+    <div class="dialog" style="max-width:500px">
+      <h2 class="dialog__title" id="share-title">Share Search</h2>
+      <div class="dialog__body">
+        <p class="text-sm text-muted mb-3">Give others read-only access to this search and all its price data.</p>
+        
+        <!-- Add share form -->
+        <div class="mb-4">
+          <label for="share-email" class="label">Email address</label>
+          <div class="flex gap-2">
+            <input type="email" id="share-email" class="input" x-model="shareEmail" 
+                   placeholder="colleague@example.com"
+                   @keydown.enter="addShare()" 
+                   :disabled="loadingShare" />
+            <button @click="addShare()" :disabled="loadingShare || !shareEmail" class="btn btn--primary">
+              <template x-if="!loadingShare">
+                <span>Share</span>
+              </template>
+              <template x-if="loadingShare">
+                <span class="spinner" aria-hidden="true"></span>
+              </template>
+            </button>
+          </div>
+        </div>
+
+        <!-- Existing shares list -->
+        <div x-show="shares.length > 0">
+          <p class="text-sm font-semibold mb-2">Shared with (<span x-text="shares.length"></span>)</p>
+          <div class="flex-col gap-2">
+            <template x-for="share in shares" :key="share.id">
+              <div class="flex items-center justify-between p-2" style="border:1px solid var(--c-border);border-radius:6px;background:var(--c-bg-subtle)">
+                <div class="flex items-center gap-2 min-w-0">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium truncate" x-text="share.email"></p>
+                    <p class="text-xs text-muted">Shared <span x-text="formatRelative(share.sharedAt)"></span></p>
+                  </div>
+                </div>
+                <button @click="revokeShare(share.id)" class="btn btn--danger btn--icon-sm" title="Revoke access" :disabled="loadingShare">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <p x-show="shares.length === 0" class="text-sm text-muted text-center py-3">
+          No one has access yet. Enter an email above to share.
+        </p>
+      </div>
+      <div class="dialog__actions">
+        <button @click="shareDialogOpen = false" class="btn btn--secondary">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── Toast ─────────────────────────────────────────────── -->
   <div class="toast-region" role="status" aria-live="polite">
     <div x-show="toast" x-transition :class="`toast toast--${toast?.type}`">
@@ -547,16 +643,22 @@
         minBeds: 0,
         filterStart: '',
         filterEnd: '',
+        showOnlyChangedPrices: false,
         toast: null,
         searchId: null,
         today: new Date().toISOString().substring(0, 10),
+        shareDialogOpen: false,
+        shares: [],
+        shareEmail: '',
+        loadingShare: false,
 
         async init() {
           this.user = await window.requireAuth();
           if (!this.user) return;
           this.searchId = new URLSearchParams(window.location.search).get('id');
           if (!this.searchId) { window.location.href = '/dashboard'; return; }
-          await Promise.all([this.loadSearch(), this.loadPrices(), this.loadInsights()]);
+          await this.loadSearch();
+          await Promise.all([this.loadPrices(), this.loadInsights(), this.loadShares()]);
         },
 
         async loadSearch() {
@@ -673,6 +775,29 @@
           }
         },
 
+        hasActualPriceChange(hotelName) {
+          const hotelPrices = this.prices
+            .filter(p => p.hotelName === hotelName)
+            .map(p => p.numericPrice)
+            .filter(p => p != null);
+          if (hotelPrices.length === 0) return false;
+          const min = Math.min(...hotelPrices);
+          const max = Math.max(...hotelPrices);
+          return min !== max;
+        },
+
+        chartHasData() {
+          const counts = {};
+          for (const p of this.prices) {
+            counts[p.hotelName] = (counts[p.hotelName] || 0) + 1;
+          }
+          let hotels = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([h]) => h);
+          if (this.showOnlyChangedPrices) {
+            hotels = hotels.filter(h => this.hasActualPriceChange(h));
+          }
+          return hotels.length > 0;
+        },
+
         renderChart() {
           const canvas = document.getElementById('priceChart');
           if (!canvas || !this.prices.length) return;
@@ -683,7 +808,15 @@
           for (const p of this.prices) {
             counts[p.hotelName] = (counts[p.hotelName] || 0) + 1;
           }
-          const topHotels = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([h]) => h);
+          let topHotels = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([h]) => h);
+          
+          // Filter to hotels with price changes if toggle is ON
+          if (this.showOnlyChangedPrices) {
+            topHotels = topHotels.filter(h => this.hasActualPriceChange(h));
+          }
+          
+          // If no hotels match the filter, don't render chart
+          if (topHotels.length === 0) return;
 
           // Collect all unique dates sorted
           const dateSet = new Set();
@@ -962,6 +1095,63 @@
         showToast(message, type = 'info') {
           this.toast = { message, type };
           setTimeout(() => { this.toast = null; }, 4000);
+        },
+
+        // ==================== SHARE MANAGEMENT ====================
+
+        async loadShares() {
+          if (this.search?._isShared) return; // Only owners can view shares
+          try {
+            const data = await window.api.get(`/api/searches/${this.searchId}/shares`);
+            this.shares = data.shares || [];
+          } catch (error) {
+            console.warn('Failed to load shares:', error.message);
+            this.shares = [];
+          }
+        },
+
+        async addShare() {
+          if (!this.shareEmail || this.loadingShare) return;
+          this.loadingShare = true;
+          try {
+            const data = await window.api.post(`/api/searches/${this.searchId}/shares`, {
+              email: this.shareEmail.trim()
+            });
+            this.showToast(data.message || 'Search shared successfully', 'success');
+            this.shareEmail = '';
+            await this.loadShares(); // Refresh list
+          } catch (error) {
+            this.showToast(error.message, 'error');
+          } finally {
+            this.loadingShare = false;
+          }
+        },
+
+        async revokeShare(shareId) {
+          if (this.loadingShare) return;
+          this.loadingShare = true;
+          try {
+            await window.api.del(`/api/searches/${this.searchId}/shares/${shareId}`);
+            this.showToast('Access revoked successfully', 'success');
+            await this.loadShares(); // Refresh list
+          } catch (error) {
+            this.showToast(error.message, 'error');
+          } finally {
+            this.loadingShare = false;
+          }
+        },
+
+        formatRelative(iso) {
+          if (!iso) return 'recently';
+          const diff = Date.now() - new Date(iso).getTime();
+          const m = Math.floor(diff / 60000);
+          if (m < 1) return 'just now';
+          if (m < 60) return `${m}m ago`;
+          const h = Math.floor(m / 60);
+          if (h < 24) return `${h}h ago`;
+          const d = Math.floor(h / 24);
+          if (d < 30) return `${d}d ago`;
+          return new Date(iso).toLocaleDateString();
         }
       };
     }
