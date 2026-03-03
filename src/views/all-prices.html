@@ -454,6 +454,7 @@
                             x-text="sortBy === 'extractedAt' ? (sortDirection === 'asc' ? '↑' : '↓') : '•'"></span>
                     </button>
                   </th>
+                  <th>Booking</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,7 +463,8 @@
                     <tr>
                       <td>
                         <a :href="`/search?id=${search.id}`" class="search-link" x-text="search.searchName"></a>
-                      </tdstyle="font-size: 0.85rem;">
+                      </td>
+                      <td style="font-size: 0.85rem;">
                         <template x-if="search._isShared">
                           <div class="flex items-center gap-1" style="color:var(--c-primary)">
                             <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -475,7 +477,6 @@
                           <span style="color: var(--text-muted);">—</span>
                         </template>
                       </td>
-                      <td >
                       <td x-text="search.destination"></td>
                       <td class="hotel-name" x-text="price.hotelName"></td>
                       <td x-text="price.rating || '—'"></td>
